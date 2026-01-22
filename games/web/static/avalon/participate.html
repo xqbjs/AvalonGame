@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avalon Game - Participate Mode</title>
+    <link rel="stylesheet" href="/static/avalon/css/style.css?v=20251214">
+    <script>
+        window.__EARLY_INIT__ = { hasGameConfig: false, isGameRunning: false, config: null, portraits: null };
+        (function() {
+            try {
+                var gameConfigStr = sessionStorage.getItem('gameConfig');
+                var portraitsStr = sessionStorage.getItem('selectedPortraits');
+                var myPlayerId = sessionStorage.getItem('my_player_id');
+                
+                // [CRITICAL FIX] 
+                // Logic: If 'my_player_id' exists, it means we came from the Lobby (Host or Guest).
+                // We DO NOT need gameConfig locally, the server has it.
+                // Force Auto-Start immediately.
+                
+                if (myPlayerId !== null && myPlayerId !== undefined) {
+                    window.__EARLY_INIT__.hasGameConfig = true; // Pretend we have config to satisfy logic
+                    if (gameConfigStr) {
+                        window.__EARLY_INIT__.config = JSON.parse(gameConfigStr);
+                    }
+                    document.documentElement.classList.add('auto-start');
+                } 
+                // Fallback: Old local single player flow
+                else if (gameConfigStr) {
+                    window.__EARLY_INIT__.hasGameConfig = true;
+                    window.__EARLY_INIT__.config = JSON.parse(gameConfigStr);
+                    document.documentElement.classList.add('auto-start');
+                }
+                else {
+                    document.documentElement.classList.add('manual-start');
+                }
+                
+                if (portraitsStr) {
+                    window.__EARLY_INIT__.portraits = JSON.parse(portraitsStr);
+                }
+            } catch (e) {
+                console.error("Init Error:", e);
+                document.documentElement.classList.add('manual-start');
+            }
+        })();
+    </script>
+    <style>
+        /* Auto-start: Show Chat & Input, Hide Setup */
+        html.auto-start #game-setup { display: none !important; }
+        html.auto-start #messages-container { display: flex !important; }
+        html.auto-start .input-container { display: flex !important; }
+        
+        /* Manual-start: Show Setup, Hide Chat */
+        html.manual-start #game-setup { display: block !important; }
+        html.manual-start #messages-container { display: none !important; }
+        html.manual-start .input-container { display: none !important; }
+
+        .waiting-message {
+            color: var(--accent);
+            text-align: center;
+            padding: 20px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="connection-status connecting">🟡 Connecting...</div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="header-controls">
+                <div class="header-label">Game: Avalon</div>
+                <div class="header-btn">Mode: Participant</div>
+            </div>
+            <div id="status-bar">
+                <span id="phase-display">Phase: -</span>
+                <span id="mission-display">Mission: -</span>
+                <span id="round-display">Round: -</span>
+                <span id="status-display">Status: Connecting...</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="map-container" id="game-visual-container">
+                <div id="game-setup" class="game-setup" style="display: none;">
+                    <h3>⚔ Game Configuration</h3>
+                    <div class="setup-form">
+                        <div class="waiting-message">
+                            <strong>Session Error.</strong><br><br>
+                            Missing Player ID. Please return to the <a href="/" style="color: #ffdd57;">Lobby</a> to join properly.
+                        </div>
+                        
+                        <div style="opacity: 0.5; pointer-events: none;">
+                            <label>Player ID: <select id="user-agent-id"><option value="0">0</option></select></label>
+                            <button id="start-game-btn" class="start-button">Manual Force Start</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-scene">
+                    <div class="pixel-table"></div>
+                    <div class="table-players" id="table-players"></div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="panel logs-panel">
+                    <h3>Chat</h3>
+                    <div id="messages-container">
+                        <div style="text-align: center; color: var(--muted); padding: 20px; font-size: 9px;">
+                            Connecting to game server...
+                        </div>
+                    </div>
+                    
+                    <div class="input-container">
+                        <div id="user-input-request" style="display: none;">
+                            <strong>Action Required:</strong> <span id="input-prompt">Please enter your move...</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <textarea id="user-input" placeholder="Type your message..." rows="3" disabled></textarea>
+                            <button id="send-button" disabled>Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/avalon/js/websocket.js"></script>
+    <script src="/static/avalon/js/participate.js"></script>
+</body>
+</html>

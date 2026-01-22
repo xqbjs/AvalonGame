@@ -1,0 +1,65 @@
+defaults:
+  - _self_
+
+default_role:
+  trainable: false
+  act_by_user: false
+  model:
+    url: "https://dashscope.aliyuncs.com/compatible-mode/v1" # Will be read from OPENAI_BASE_URL environment variable
+    api_key: "sk-bf618b7ae72442fdb32b0aa55be3e3d7" # Will be read from OPENAI_API_KEY environment variable
+    model_name: qwen-plus
+    temperature: 0.7
+    max_tokens: 2048
+    stream: false
+  agent:
+    type: ThinkingReActAgent
+    kwargs: {} 
+
+
+portraits:
+  1:
+    name: Agent1
+  
+  2:
+    name: Agent2
+  
+  3:
+    name: Agent3
+  
+  4:
+    name: Agent4
+  
+  5:
+    name: Agent5
+    model:
+      model_name: qwen-max
+  
+  6:
+    name: Agent6
+  
+  7:
+    name: Agent7
+  
+  8:
+    name: Agent8
+  
+  9:
+    name: Agent9
+  
+  10:
+    name: Agent10
+  
+  11:
+    name: Agent11
+  
+  12:
+    name: Agent12
+  
+  13:
+    name: Agent13
+  
+  14:
+    name: Agent14
+  
+  15:
+    name: Agent15

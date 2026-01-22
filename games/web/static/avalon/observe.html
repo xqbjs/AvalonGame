@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avalon Game - Observe Mode</title>
+    <link rel="stylesheet" href="/static/avalon/css/style.css?v=20251214">
+    <script>
+        window.__EARLY_INIT__ = { hasGameConfig: false, isGameRunning: false, config: null, portraits: null };
+        (function() {
+            try {
+                var gameConfigStr = sessionStorage.getItem('gameConfig');
+                var portraitsStr = sessionStorage.getItem('selectedPortraits');
+                var gameRunning = sessionStorage.getItem('gameRunning') === 'true';
+                
+                if (gameConfigStr) {
+                    window.__EARLY_INIT__.hasGameConfig = true;
+                    window.__EARLY_INIT__.config = JSON.parse(gameConfigStr);
+                    document.documentElement.classList.add('auto-start');
+                } else if (gameRunning) {
+                    window.__EARLY_INIT__.isGameRunning = true;
+                    document.documentElement.classList.add('auto-start');
+                } else {
+                    document.documentElement.classList.add('manual-start');
+                }
+                
+                if (portraitsStr) {
+                    window.__EARLY_INIT__.portraits = JSON.parse(portraitsStr);
+                }
+            } catch (e) {
+                document.documentElement.classList.add('manual-start');
+            }
+        })();
+    </script>
+    <style>
+        /* Hide/show elements based on initial state to avoid flickering */
+        html.auto-start #game-setup { display: none !important; }
+        html.auto-start #messages-container { display: flex !important; }
+        html.manual-start #game-setup { display: block !important; }
+        html.manual-start #messages-container { display: none !important; }
+
+        /* MULTIPLAYER MOD: Hide inputs that observers shouldn't touch */
+        .observer-hidden-input {
+            display: none !important;
+        }
+        .waiting-text {
+            color: var(--accent);
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 10px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="connection-status connecting">🟡 Connecting...</div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="header-controls">
+                <div class="header-label">Game: Avalon</div>
+                <div class="header-btn">Mode: Observer</div>
+            </div>
+            <div id="status-bar">
+                <span id="phase-display">Phase: -</span>
+                <span id="mission-display">Mission: -</span>
+                <span id="round-display">Round: -</span>
+                <span id="status-display">Status: Connecting...</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="map-container" id="game-visual-container">
+                <div id="game-setup" class="game-setup" style="display: none;">
+                    <h3>👁 Observer View</h3>
+                    <div class="setup-form">
+                        <div class="waiting-text">
+                            Waiting for the Host to start the game...<br>
+                            Click below if visuals don't load automatically.
+                        </div>
+
+                        <label class="observer-hidden-input">
+                            Number of Players:
+                            <select id="num-players">
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                            </select>
+                        </label>
+                        <label class="observer-hidden-input">
+                            Language:
+                            <select id="language">
+                                <option value="en">English</option>
+                                <option value="zh">Chinese</option>
+                            </select>
+                        </label>
+                        
+                        <button id="start-game-btn" class="start-button">Enter View</button>
+                    </div>
+                </div>
+
+                <div class="table-scene">
+                    <div class="pixel-table"></div>
+                    <div class="table-players" id="table-players"></div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="panel logs-panel">
+                    <h3>Chat</h3>
+                    <div id="messages-container">
+                        <div style="text-align: center; color: var(--muted); padding: 20px; font-size: 9px;">
+                            Connecting to game feed...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/avalon/js/websocket.js"></script>
+    <script src="/static/avalon/js/observe.js"></script>
+</body>
+</html>
