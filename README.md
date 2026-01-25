@@ -194,9 +194,7 @@ $env:OPENAI_API_KEY="Your Real API Key"
 
 #### Option 2: Config File
 
-If environment variables are not set, the system reads from games/avalon/config/default_config.yaml.
-
-Open the file and modify the llm section:./games/avalon/config/default_config.yaml
+If environment variables are not set, the system reads from games/avalon/config/default_config.yaml and games/web/web_config.yaml.You must open **both these two files** and modify the llm section:
 
 ```bash
   url: "Your API Endpoint"
