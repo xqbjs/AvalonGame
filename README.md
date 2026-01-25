@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![WebSocket](https://img.shields.io/badge/Realtime-WebSocket-000000?style=for-the-badge&logo=socket.io&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
-[![Reinforcement Learning](https://img.shields.io/badge/AI-Reinforcement%20Learning-8A2BE2?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
+[![AI](https://img.shields.io/badge/AI-Qwen_Max-FF6A00?style=for-the-badge&logo=alibaba-cloud&logoColor=white)](https://tongyi.aliyun.com/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=for-the-badge)](LICENSE)
 
 <br/>
