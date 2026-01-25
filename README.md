@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![WebSocket](https://img.shields.io/badge/Realtime-WebSocket-000000?style=for-the-badge&logo=socket.io&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
 [![Reinforcement Learning](https://img.shields.io/badge/AI-Reinforcement%20Learning-8A2BE2?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=for-the-badge)](LICENSE)
 
 <br/>
 
@@ -234,7 +234,7 @@ The core logic of this project is built upon **AgentEvolver**:https://github.com
 ## 📄 License & Acknowledgments
 
 ### Open Source License
-This project is open-source software licensed under the **MIT License**.
+This project is open-source software licensed under the **Apache License**.
 
 ### IP Disclaimer
 **The Resistance: Avalon** is a board game designed by **Don Eskridge** and published by **Indie Boards & Cards**.
