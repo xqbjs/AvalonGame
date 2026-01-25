@@ -7,8 +7,8 @@ default_role:
   trainable: false
   act_by_user: false
   model:
-    url: "https://dashscope.aliyuncs.com/compatible-mode/v1" # Will be read from OPENAI_BASE_URL environment variable
-    api_key: "sk-bf618b7ae72442fdb32b0aa55be3e3d7" # Will be read from OPENAI_API_KEY environment variable
+    url: "YOUR_BASE_URL" 
+    api_key: "YOUR_API_KEY" 
     model_name: qwen-plus
     # model_name: qwen3-30b-a3b-instruct-2507
     temperature: 0.7
@@ -26,9 +26,9 @@ game:
   log_dir: games/logs
   roles_name:
     - Merlin
+    - Percival
     - Servant
-    - Servant
-    - Minion
+    - Morgana
     - Assassin
 
 # Role-specific configuration (empty by default, can be overridden in child configs)

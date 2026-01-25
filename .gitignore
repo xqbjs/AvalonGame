@@ -1,0 +1,28 @@
+# --- Python 编译产物 ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- 运行日志和产物 ---
+logs/
+*.log
+npm-debug.log*
+
+# --- 虚拟环境 (如果你放在项目里的话) ---
+env/
+venv/
+.venv/
+.conda/
+
+# --- IDE 配置 (可选，建议忽略) ---
+.vscode/
+.idea/
+
+# --- 操作系统文件 ---
+.DS_Store
+Thumbs.db
+
+# --- 敏感信息 (非常重要！) ---
+.env
+# 如果 config.yaml 包含密码/Key，取消下面这行的注释，并上传一个 config.example.yaml
+# config.yaml

@@ -86,13 +86,65 @@ class GameLogger:
             "game_end": None,
         }
         self.game_log_dir = None
+        self.stream_file_path = None  # [NEW] 新增：实时日志路径
+        
+    
+    def _append_stream_log(self, event_type: str, data: dict) -> None:
+        """Append a single log entry to the stream file immediately."""
+        if not self.game_log_dir:
+            return
+            
+        # 懒加载
+        if not self.stream_file_path:
+            self.stream_file_path = os.path.join(self.game_log_dir, "game_stream.jsonl")
+            
+        entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "type": event_type,
+            "data": self._convert_to_serializable(data)
+        }
+        
+        try:
+            with open(self.stream_file_path, 'a', encoding='utf-8') as f:
+                # [关键修改] indent=4 让 JSON 格式化输出，ensure_ascii=False 显示中文
+                f.write(json.dumps(entry, ensure_ascii=False, indent=4))
+                # 额外写入一个分割线，方便在极长的日志中区分不同的条目
+                f.write("\n" + "-"*50 + "\n") 
+        except Exception as e:
+            logger.warning(f"Failed to append stream log: {e}")
+    
     
     def initialize_game_log(self, roles: list[tuple], num_players: int) -> None:
         """Initialize game log with roles and player count."""
-        self.game_log["initialization"] = {
+        # 1. 准备总日志数据
+        init_data = {
             "roles": [(role_id, role_name, side) for role_id, role_name, side in roles],
             "num_players": num_players,
         }
+        
+        # 2. 存入内存总日志
+        self.game_log["initialization"] = init_data
+        
+        # 3. [实时] 写入总流水 (game_stream.jsonl)
+        self._append_stream_log("initialization", init_data)
+        
+        # 4. [NEW] 核心修复：立刻为所有 Player 创建独立日志文件！
+        # 即使他们还没说话，文件也会在游戏开始的瞬间被创建
+        for i in range(num_players):
+            # 获取该玩家的角色信息
+            my_role = "Unknown"
+            if i < len(roles):
+                my_role = roles[i][1] # role_name
+            
+            agent_name = f"Player{i}"
+            
+            # 强制调用 log_agent_event 写入一条初始日志
+            # 这会触发 open(..., 'a')，从而在硬盘上立刻创建文件
+            self.log_agent_event(i, agent_name, {
+                "type": "initialization", 
+                "role": my_role,
+                "message": "Session started, log file initialized."
+            })
     
     def create_game_log_dir(self, log_dir: str | None, timestamp: str | None = None) -> str | None:
         """Create game log directory and return the path.
@@ -123,44 +175,130 @@ class GameLogger:
             "discussion": [],
             "team_proposed": [],
         })
+        # [NEW] 立即写入任务开始事件
+        self._append_stream_log("mission_start", {
+            "mission_id": mission_id, "round_id": round_id, "leader": leader
+        })
     
     def add_discussion_messages(self, discussion_msgs: list[dict]) -> None:
         """Add discussion messages to the current mission."""
         if self.game_log_dir and self.game_log["missions"]:
             self.game_log["missions"][-1]["discussion"] = discussion_msgs
+        # [NEW] 立即写入讨论内容
+            self._append_stream_log("discussion", {"messages": discussion_msgs})
+    
+    # [NEW] 核心功能：单句实时写入 (Game.py 中调用此方法)
+    def add_single_dialogue(self, message: dict) -> None:
+        """Log a single dialogue message immediately to the stream."""
+        # 1. 写入硬盘流式日志
+        self._append_stream_log("dialogue", message)
+
+        # 2. 同时维护内存里的完整性
+        try:
+            if self.game_log["missions"]:
+                current_mission = self.game_log["missions"][-1]
+                # 确保 discussion 是个列表
+                if "discussion" not in current_mission or not isinstance(current_mission["discussion"], list):
+                    current_mission["discussion"] = []
+                current_mission["discussion"].append(message)
+        except Exception:
+            pass 
+
+    
+    # [修改] 增加 indent=4 参数，使输出格式化换行，方便阅读
+    def log_agent_event(self, agent_index: int, agent_name: str, event_data: dict) -> None:
+        """Append a log entry to a specific agent's log file immediately."""
+        if not self.game_log_dir:
+            return
+            
+        filename = f"{agent_name}_stream.jsonl"
+        filepath = os.path.join(self.game_log_dir, filename)
+        
+        entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "data": self._convert_to_serializable(event_data)
+        }
+        
+        try:
+            with open(filepath, 'a', encoding='utf-8') as f:
+                # [关键修改] indent=4 让 JSON 格式化输出
+                f.write(json.dumps(entry, ensure_ascii=False, indent=4))
+                # 额外写入一个分割线
+                f.write("\n" + "-"*50 + "\n")
+        except Exception as e:
+            logger.warning(f"Failed to append agent log: {e}")
+            
+    # [NEW] 广播写入：把一条消息同时写入所有玩家的日志文件
+    # 用于 Moderator 的公告、公开讨论等所有人都能听到的内容
+    def log_broadcast_event(self, message: dict, num_players: int) -> None:
+        """Log a public message to ALL players' stream files."""
+        if not self.game_log_dir:
+            return
+            
+        # 遍历所有玩家，给每个人都记上一笔
+        for i in range(num_players):
+            agent_name = f"Player{i}"
+            self.log_agent_event(i, agent_name, message)      
+    
     
     def add_team_proposal(self, team: list[int]) -> None:
         """Add team proposal to the current mission."""
         if self.game_log_dir and self.game_log["missions"]:
             self.game_log["missions"][-1]["team_proposed"] = team
+            # [NEW] 立即写入提议
+            self._append_stream_log("team_proposal", {"team": team})
+    
     
     def add_team_voting(self, team: list[int], votes: list[int], approved: bool) -> None:
         """Add team voting results to the current mission."""
         if self.game_log_dir and self.game_log["missions"]:
-            self.game_log["missions"][-1]["team_voting"] = {
+            # [FIX] 必须先定义变量，下面才能用
+            vote_data = {
                 "team": team,
                 "votes": votes,
                 "approved": approved,
             }
+            
+            # 存入内存
+            self.game_log["missions"][-1]["team_voting"] = vote_data
+            
+            # [NEW] 立即写入流式日志
+            self._append_stream_log("team_voting", vote_data)
+    
     
     def add_quest_voting(self, team: list[int], votes: list[int], num_fails: int, succeeded: bool) -> None:
         """Add quest voting results to the current mission."""
         if self.game_log_dir and self.game_log["missions"]:
-            self.game_log["missions"][-1]["quest_voting"] = {
+            # [FIX] 必须先定义变量
+            quest_data = {
                 "team": team,
                 "votes": votes,
                 "num_fails": num_fails,
                 "succeeded": succeeded,
             }
+            
+            # 存入内存
+            self.game_log["missions"][-1]["quest_voting"] = quest_data
+            
+            # [NEW] 立即写入流式日志
+            self._append_stream_log("quest_voting", quest_data)
+    
     
     def add_assassination(self, assassin_id: int, target: int, good_wins: bool) -> None:
         """Add assassination results to the game log."""
         if self.game_log_dir:
-            self.game_log["assassination"] = {
+            # [FIX] 必须先定义变量
+            assassin_data = {
                 "assassin_id": assassin_id,
                 "target": target,
                 "good_wins": good_wins,
             }
+            
+            # 存入内存
+            self.game_log["assassination"] = assassin_data
+            
+            # [NEW] 立即写入流式日志
+            self._append_stream_log("assassination", assassin_data)
     
     @staticmethod
     def _convert_to_serializable(obj: Any) -> Any:
@@ -195,6 +333,8 @@ class GameLogger:
             "good_victory": env.good_victory,
             "quest_results": env.quest_results,
         }
+        # [NEW] 记录游戏结束
+        self._append_stream_log("game_end", self.game_log["game_end"])
         
         # Extract model names from agents if available
         model_names = []
@@ -371,26 +511,48 @@ class LanguageFormatter:
             for j, (_, _, s) in enumerate(roles)
         ]
     
+    
+    # [FIX] 核心修复：更正角色数量统计逻辑
     def calculate_role_counts(self, config: Any) -> dict[str, Any]:
         """Calculate role counts for system prompt."""
+        # 统计好人阵营
         merlin_count = 1 if config.merlin else 0
         percival_count = 1 if config.percival else 0
+        servant_count = config.num_good - merlin_count - percival_count
         
+        # 统计坏人阵营
+        assassin_count = 1 # 默认总有刺客
+        morgana_count = 1 if config.morgana else 0
+        mordred_count = 1 if config.mordred else 0
+        oberon_count = 1 if config.oberon else 0
+        
+        # [FIX] 爪牙数量 = 总坏人 - 所有特殊坏人
+        minion_count = config.num_evil - (assassin_count + morgana_count + mordred_count + oberon_count)
+        
+        # 确保不会出现负数
+        minion_count = max(0, minion_count)
+
         return {
             "num_players": config.num_players,
             "max_player_id": config.num_players - 1,
             "num_good": config.num_good,
-            "merlin_count": merlin_count,
-            "servant_count": config.num_good - merlin_count - percival_count,
             "num_evil": config.num_evil,
-            "assassin_count": 1,
-            "minion_count": config.num_evil - 1,
+            
+            "merlin_count": merlin_count,
             "percival_count": percival_count,
+            "servant_count": servant_count,
+            
+            "assassin_count": assassin_count,
+            "morgana_count": morgana_count,
+            "mordred_count": mordred_count,
+            "oberon_count": oberon_count,
+            "minion_count": minion_count,
         }
     
     def format_system_prompt(self, config: Any, prompts_class: Any) -> str:
         """Format system prompt with role counts."""
         return prompts_class.system_prompt_template.format(**self.calculate_role_counts(config))
+    
     
     def format_true_roles(self, roles: list[tuple]) -> str:
         """Format true roles for game end display."""

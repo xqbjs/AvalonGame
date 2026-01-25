@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AgentEvolver Game Arena</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +16,7 @@
       src: url("/static/fonts/ark-pixel-font.woff2") format("woff2");
       font-display: swap;
     }
+
     :root {
       --bg1: #0c1424;
       --bg2: #070c18;
@@ -23,14 +27,18 @@
       --accent2: #ffdd57;
       --text: #e9f2ff;
       --muted: #a9bedc;
-      --grid: rgba(255,255,255,0.05);
+      --grid: rgba(255, 255, 255, 0.05);
       --shadow: 0 6px 0 #0a0f19;
       --shadow2: 0 10px 0 #0b1628;
       --portraits-strip-width: 220px;
       --game-card-min-width: 180px;
       --portrait-card-padding: 6px;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -41,11 +49,13 @@
       image-rendering: pixelated;
       overflow-x: hidden;
     }
+
     .page {
       max-width: 1400px;
       margin: 0 auto;
       padding: 20px 24px 32px;
     }
+
     header {
       display: flex;
       align-items: flex-end;
@@ -54,17 +64,20 @@
       margin-bottom: 14px;
       flex-wrap: wrap;
     }
+
     .title {
       font-size: 18px;
       letter-spacing: 1px;
       color: var(--accent2);
       text-shadow: 0 2px 0 #0b1628;
     }
+
     .subtitle {
       font-size: 10px;
       color: var(--muted);
       line-height: 1.5;
     }
+
     .panel {
       background: var(--panel);
       border: 2px solid var(--border);
@@ -72,13 +85,19 @@
       box-shadow: var(--shadow);
     }
 
+    /* --- 7. 底部 Agents (修复交互与滚动) --- */
+    /* ================= 电脑端默认样式 (从纯电脑版还原) ================= */
+    
+    /* 1. 侧边栏容器：电脑上必须是竖长条 */
     #portraits-strip {
       display: flex;
       flex-direction: column;
       min-width: var(--portraits-strip-width);
       max-width: var(--portraits-strip-width);
-      height: 580px; 
+      height: 580px;  /* 关键：电脑端高度 */
     }
+
+    /* 2. 头部：保持原样 */
     .portraits-header {
       padding: 8px 10px 6px 10px;
       display: flex;
@@ -90,21 +109,28 @@
       font-size: 10px;
       color: var(--accent2);
     }
+
+    /* 3. 网格：电脑上必须是 Grid 双列 */
     #portraits-grid {
       padding: 8px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      display: grid;  /* 关键：Grid 布局 */
+      grid-template-columns: repeat(2, 1fr); /* 关键：两列 */
       gap: 6px;
-      overflow-y: auto;
+      overflow-y: auto; /* 关键：竖向滚动 */
       flex: 1; 
     }
+
+    /* 滚动条样式保持不变 */
     #portraits-grid::-webkit-scrollbar { width: 5px; }
     #portraits-grid::-webkit-scrollbar-track { background: transparent; }
     #portraits-grid::-webkit-scrollbar-thumb { background: rgba(81,246,165,0.25); border-radius: 3px; }
+
     #random-select-btn {
       font-size: 7px;
       padding: 4px 8px;
     }
+
+    /* 4. 卡片：电脑端样式 */
     .portrait-card {
       position: relative;
       border: 2px solid var(--border);
@@ -115,17 +141,35 @@
       transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
       user-select: none;
     }
-    .portrait-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 8px 0 #0b1628; }
-    .portrait-card.active { border-color: var(--accent2); box-shadow: var(--shadow2); }
+    /* ... hover 等样式保持不变 ... */
+
+    .portrait-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: 0 8px 0 #0b1628;
+    }
+
+    .portrait-card.active {
+      border-color: var(--accent2);
+      box-shadow: var(--shadow2);
+    }
+
     .portrait-card img {
       width: 100%;
       display: block;
       image-rendering: pixelated;
       border-radius: 8px;
       background: #0b1626;
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
-    .portrait-name { margin-top: 4px; font-size: 8px; text-align: center; color: #d6e6ff; }
+
+    .portrait-name {
+      margin-top: 4px;
+      font-size: 8px;
+      text-align: center;
+      color: #d6e6ff;
+    }
+
     .portrait-model {
       position: absolute;
       top: -8px;
@@ -135,7 +179,7 @@
       border-radius: 6px;
       border: 2px solid #1a2d44;
       background: rgba(13, 24, 41, 0.95);
-      box-shadow: 0 3px 0 rgba(11,22,40,0.55);
+      box-shadow: 0 3px 0 rgba(11, 22, 40, 0.55);
       font-size: 7px;
       color: var(--accent);
       white-space: nowrap;
@@ -152,7 +196,7 @@
       gap: 10px;
       align-items: start;
     }
-    
+
     /* Main scene area - single border */
     #scene {
       position: relative;
@@ -163,7 +207,7 @@
       background: linear-gradient(180deg, #143458 0%, #0f223b 45%, #0c192c 60%, #0a1221 100%);
       box-shadow: var(--shadow);
     }
-    
+
     /* Grid background */
     #scene::before {
       content: "";
@@ -178,7 +222,7 @@
       pointer-events: none;
       z-index: 0;
     }
-    
+
     /* Table preview area - no border, transparent */
     #table-preview {
       position: absolute;
@@ -187,24 +231,32 @@
       top: 120px;
       bottom: 100px;
       pointer-events: none;
-      display: none; /* Hidden by default, shown after selecting game */
+      display: none;
+      /* Hidden by default, shown after selecting game */
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 15;
     }
+
     #table-preview.has-game {
-      display: flex; /* Show after selecting game */
+      display: flex;
+      /* Show after selecting game */
     }
+
     #table-stage {
       position: relative;
       width: 100%;
       height: 100%;
-      pointer-events: none; /* Keep parent element from receiving events */
+      pointer-events: none;
+      /* Keep parent element from receiving events */
     }
+
     #table-players {
-      pointer-events: auto; /* Seat needs to receive events */
+      pointer-events: auto;
+      /* Seat needs to receive events */
     }
+
     .table {
       position: absolute;
       left: 50%;
@@ -215,16 +267,18 @@
       border-radius: 20px;
       background: linear-gradient(145deg, #263f52, #1c2f44);
       border: 2px solid #1a3048;
-      box-shadow: inset 0 8px 0 rgba(255,255,255,0.03), 0 8px 0 rgba(11,22,40,0.5);
+      box-shadow: inset 0 8px 0 rgba(255, 255, 255, 0.03), 0 8px 0 rgba(11, 22, 40, 0.5);
       opacity: 0.9;
     }
+
     .table::after {
       content: "";
       position: absolute;
       inset: 14px;
       border-radius: 14px;
-      border: 2px dashed rgba(255,255,255,0.08);
+      border: 2px dashed rgba(255, 255, 255, 0.08);
     }
+
     /* Table center role statistics display */
     .table-role-stats {
       position: absolute;
@@ -235,16 +289,18 @@
       border: 2px solid #1a2d44;
       border-radius: 10px;
       padding: 8px 12px;
-      box-shadow: 0 4px 0 rgba(11,22,40,0.6);
+      box-shadow: 0 4px 0 rgba(11, 22, 40, 0.6);
       z-index: 20;
       display: none;
       flex-direction: column;
       gap: 4px;
       min-width: 180px;
     }
+
     .table-role-stats.show {
       display: flex;
     }
+
     .table-role-stats .role-stat-item {
       font-size: 7px;
       color: #cfe0ff;
@@ -253,14 +309,17 @@
       align-items: center;
       gap: 8px;
     }
+
     .table-role-stats .role-stat-item .role-name {
       color: var(--accent2);
       flex-shrink: 0;
     }
+
     .table-role-stats .role-stat-item .role-count {
       color: var(--accent);
       font-weight: bold;
     }
+
     /* Control buttons below table */
     .table-controls {
       display: flex;
@@ -270,33 +329,42 @@
       pointer-events: auto;
       z-index: 15;
     }
+
     /* Step hint hover effect */
     .step-hint {
       cursor: pointer;
       transition: color 0.2s ease;
       color: var(--muted);
     }
+
     .step-hint:hover {
       color: var(--accent);
     }
+
     .step-separator {
       color: var(--muted);
       margin: 0 4px;
     }
+
     /* Step hint blink animation - remind user on page load */
     .step-hint.initial-blink {
       animation: stepBlink 2s ease-in-out 3;
     }
+
     @keyframes stepBlink {
-      0%, 100% {
+
+      0%,
+      100% {
         color: var(--muted);
         text-shadow: none;
       }
+
       50% {
         color: var(--accent);
         text-shadow: 0 0 8px rgba(81, 246, 165, 0.6);
       }
     }
+
     /* Highlight effect */
     #games.highlight,
     #portraits-strip.highlight,
@@ -306,6 +374,7 @@
       border-color: var(--accent) !important;
       transition: box-shadow 0.3s ease, border-color 0.3s ease;
     }
+
     /* More prominent start button style */
     .btn-start {
       font-size: 12px !important;
@@ -318,15 +387,18 @@
       text-transform: uppercase !important;
       letter-spacing: 1px !important;
     }
+
     .btn-start:hover {
       transform: translateY(-3px) !important;
       box-shadow: 0 10px 0 #0b1628, 0 0 30px rgba(81, 246, 165, 0.6) !important;
       background: linear-gradient(180deg, #5fffb5, #4de89a) !important;
     }
+
     .btn-start:active {
       transform: translateY(4px) !important;
       box-shadow: 0 6px 0 #0b1628, 0 0 15px rgba(81, 246, 165, 0.3) !important;
     }
+
     .btn-start:disabled {
       background: linear-gradient(180deg, #3a3a3a, #2a2a2a) !important;
       border-color: #20314a !important;
@@ -334,30 +406,42 @@
       box-shadow: 0 6px 0 #0b1628 !important;
       opacity: 0.6 !important;
     }
-    #table-players { 
-      position: absolute; 
-      inset: 0; 
-      pointer-events: auto; 
+
+    #table-players {
+      position: absolute;
+      inset: 0;
+      pointer-events: auto;
     }
+
     .seat {
       position: absolute;
       width: 70px;
       height: 70px;
       border-radius: 10px;
-      overflow: visible; 
+      overflow: visible;
       border: 2px solid var(--border);
       background: var(--panel2);
-      box-shadow: 0 8px 0 rgba(10,15,28,0.7);
+      box-shadow: 0 8px 0 rgba(10, 15, 28, 0.7);
       transition: left 420ms ease, top 420ms ease, transform 420ms ease, opacity 220ms ease;
       opacity: 0.96;
-      pointer-events: auto; 
+      pointer-events: auto;
     }
+
     .seat img {
       border-radius: 10px;
-      overflow: hidden; 
+      overflow: hidden;
     }
-    .seat.enter { transform: scale(0.85); opacity: 0.0; }
-    .seat.leave { opacity: 0.0; transform: scale(0.8); }
+
+    .seat.enter {
+      transform: scale(0.85);
+      opacity: 0.0;
+    }
+
+    .seat.leave {
+      opacity: 0.0;
+      transform: scale(0.8);
+    }
+
     .seat img {
       width: 100%;
       height: 100%;
@@ -370,24 +454,28 @@
     .seat .seat-label {
       position: absolute;
       left: 50%;
-      bottom: -20px; 
+      bottom: -20px;
       transform: translateX(-50%);
-      min-width: 80px; 
-      max-width: 200px; 
+      min-width: 80px;
+      max-width: 200px;
       padding: 0;
       border-radius: 7px;
       border: 2px solid #1a2d44;
       background: rgba(13, 24, 41, 0.92);
-      box-shadow: 0 3px 0 rgba(11,22,40,0.55);
+      box-shadow: 0 3px 0 rgba(11, 22, 40, 0.55);
       font-size: 7px;
       color: #cfe0ff;
       line-height: 1.1;
       pointer-events: auto;
       opacity: 0;
       transition: opacity 160ms ease;
-      z-index: 1000; 
+      z-index: 1000;
     }
-    .seat.has-label .seat-label { opacity: 1; }
+
+    .seat.has-label .seat-label {
+      opacity: 1;
+    }
+
     .seat .seat-label select {
       width: 100%;
       padding: 3px 6px;
@@ -402,37 +490,38 @@
       -webkit-appearance: none;
       -moz-appearance: none;
       background-image:
-        linear-gradient(45deg, transparent 50%, rgba(207,224,255,0.8) 50%),
-        linear-gradient(135deg, rgba(207,224,255,0.8) 50%, transparent 50%);
+        linear-gradient(45deg, transparent 50%, rgba(207, 224, 255, 0.8) 50%),
+        linear-gradient(135deg, rgba(207, 224, 255, 0.8) 50%, transparent 50%);
       background-position:
         calc(100% - 8px) 50%,
         calc(100% - 4px) 50%;
       background-size: 3px 3px, 3px 3px;
       background-repeat: no-repeat;
     }
+
     .seat .seat-label select:hover {
       background-color: rgba(13, 24, 41, 0.95);
     }
 
     .seat .seat-model {
       position: absolute;
-      top: -20px; 
+      top: -20px;
       left: 50%;
       transform: translateX(-50%);
       padding: 2px 6px;
       border-radius: 6px;
       border: 2px solid #1a2d44;
       background: rgba(13, 24, 41, 0.95);
-      box-shadow: 0 3px 0 rgba(11,22,40,0.55);
+      box-shadow: 0 3px 0 rgba(11, 22, 40, 0.55);
       font-size: 7px;
       color: var(--accent);
       white-space: nowrap;
-      min-width: 60px; 
-      max-width: 200px; 
-      z-index: 1000; 
+      min-width: 60px;
+      max-width: 200px;
+      z-index: 1000;
       pointer-events: none;
     }
-    
+
     .seat .player-name {
       position: absolute;
       top: -32px;
@@ -446,7 +535,7 @@
       font-weight: bold;
       white-space: nowrap;
       z-index: 1001;
-      box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
     }
 
     #hud {
@@ -458,16 +547,18 @@
       pointer-events: none;
       z-index: 10;
     }
-    
+
     .hud-top {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      align-items: flex-end; /* [FIX] Align ALL top items (Team, Config, Mode) to the bottom */
+      align-items: flex-end;
+      /* [FIX] Align ALL top items (Team, Config, Mode) to the bottom */
       pointer-events: auto;
-      width: 100%; /* Ensure full width so mode toggle can be pushed right */
+      width: 100%;
+      /* Ensure full width so mode toggle can be pushed right */
     }
-    
+
     .pill {
       display: inline-flex;
       align-items: center;
@@ -478,38 +569,62 @@
       border: 2px solid #1a2d44;
       font-size: 9px;
       color: #d9e7ff;
-      box-shadow: 0 4px 0 rgba(11,22,40,0.6);
+      box-shadow: 0 4px 0 rgba(11, 22, 40, 0.6);
       min-width: 100px;
     }
-    .pill strong { color: var(--accent); }
-    .pill.pill-game { min-width: 130px; }
-    .pill.pill-mode { min-width: 140px; cursor: pointer; }
-    .pill.pill-mode:hover { border-color: rgba(81,246,165,0.5); }
-    
+
+    .pill strong {
+      color: var(--accent);
+    }
+
+    .pill.pill-game {
+      min-width: 130px;
+    }
+
+    .pill.pill-mode {
+      min-width: 140px;
+      cursor: pointer;
+    }
+
+    .pill.pill-mode:hover {
+      border-color: rgba(81, 246, 165, 0.5);
+    }
+
     .mode-toggle {
       position: relative;
       display: inline-block;
       pointer-events: auto;
-      margin-left: auto; /* [FIX] Push mode toggle to the far right */
+      margin-left: auto;
+      /* [FIX] Push mode toggle to the far right */
       margin-bottom: 0;
     }
-    .mode-toggle.open .pill { border-color: var(--accent2); }
+
+    .mode-toggle.open .pill {
+      border-color: var(--accent2);
+    }
+
     .mode-menu {
       position: absolute;
-      right: 0; /* Align dropdown to the right since it's on the edge */
+      right: 0;
+      /* Align dropdown to the right since it's on the edge */
       left: auto;
       top: calc(100% + 6px);
       min-width: 140px;
       background: rgba(13, 24, 41, 0.95);
       border: 2px solid #1a2d44;
       border-radius: 8px;
-      box-shadow: 0 8px 0 rgba(11,22,40,0.7);
+      box-shadow: 0 8px 0 rgba(11, 22, 40, 0.7);
       padding: 6px;
       display: none;
       z-index: 100;
       pointer-events: auto;
     }
-    .mode-toggle.open .mode-menu { display: grid; gap: 6px; }
+
+    .mode-toggle.open .mode-menu {
+      display: grid;
+      gap: 6px;
+    }
+
     .mode-opt {
       font-family: "Press Start 2P", "Helvetica Neue", Arial, sans-serif;
       font-size: 8px;
@@ -523,9 +638,16 @@
       text-align: left;
       transition: transform 0.08s ease, border-color 0.08s ease;
     }
-    .mode-opt:hover { transform: translateY(-1px); border-color: rgba(81,246,165,0.5); }
-    .mode-opt.active { border-color: var(--accent2); }
-    
+
+    .mode-opt:hover {
+      transform: translateY(-1px);
+      border-color: rgba(81, 246, 165, 0.5);
+    }
+
+    .mode-opt.active {
+      border-color: var(--accent2);
+    }
+
     .btn {
       font-family: "Press Start 2P", "Helvetica Neue", Arial, sans-serif;
       font-size: 9px;
@@ -539,38 +661,59 @@
       transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
       white-space: nowrap;
     }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #0b1628; }
-    .btn:active { transform: translateY(2px); box-shadow: 0 4px 0 #0b1628; }
-    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: 0 6px 0 #0b1628; }
-    
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 #0b1628;
+    }
+
+    .btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 0 #0b1628;
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 0 6px 0 #0b1628;
+    }
+
     .hud-config-inline {
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-end; /* [FIX] Bottom align inputs and buttons */
+      align-items: flex-end;
+      /* [FIX] Bottom align inputs and buttons */
       gap: 6px;
       margin-left: 6px;
       padding-left: 6px;
-      border-left: 2px solid rgba(255,255,255,0.08);
+      border-left: 2px solid rgba(255, 255, 255, 0.08);
       pointer-events: auto;
     }
+
     .config-extra {
       display: none;
     }
-    .config-extra.show { 
+
+    .config-extra.show {
       display: flex;
       gap: 6px;
-      align-items: flex-end; /* [FIX] Bottom align children */
+      align-items: flex-end;
+      /* [FIX] Bottom align children */
       flex-wrap: wrap;
     }
-    .config-item { 
-      display: flex; 
-      flex-direction: column; 
-      gap: 4px; 
+
+    .config-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    .config-item label { 
-      font-size: 7px; 
-      color: #a0b8d8; 
+
+    .config-item label {
+      font-size: 7px;
+      color: #a0b8d8;
     }
+
     .hud-config-inline select,
     .hud-config-inline input[type="number"],
     .hud-config-inline input[type="text"] {
@@ -583,39 +726,43 @@
       color: #e9f2ff;
       outline: none;
       min-width: 60px;
-      box-shadow: 0 3px 0 rgba(11,22,40,0.55);
+      box-shadow: 0 3px 0 rgba(11, 22, 40, 0.55);
       cursor: pointer;
       appearance: none;
       -webkit-appearance: none;
       -moz-appearance: none;
       background-image:
-        linear-gradient(45deg, transparent 50%, rgba(169,190,220,0.95) 50%),
-        linear-gradient(135deg, rgba(169,190,220,0.95) 50%, transparent 50%);
+        linear-gradient(45deg, transparent 50%, rgba(169, 190, 220, 0.95) 50%),
+        linear-gradient(135deg, rgba(169, 190, 220, 0.95) 50%, transparent 50%);
       background-position:
         calc(100% - 12px) 50%,
         calc(100% - 8px) 50%;
       background-size: 4px 4px, 4px 4px;
       background-repeat: no-repeat;
     }
+
     .hud-config-inline input[type="number"],
     .hud-config-inline input[type="text"] {
-      padding-right: 8px; 
+      padding-right: 8px;
       background-image: none;
       cursor: text;
     }
+
     #diplomacy-max-phases,
     #diplomacy-negotiation-rounds {
       min-width: 60px;
       width: 60px;
     }
+
     .hud-config-inline select:focus,
-    .hud-config-inline input:focus { 
-      border-color: var(--accent); 
+    .hud-config-inline input:focus {
+      border-color: var(--accent);
     }
+
     .hud-config-inline select:hover,
     .hud-config-inline input:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 0 rgba(11,22,40,0.55);
+      box-shadow: 0 4px 0 rgba(11, 22, 40, 0.55);
     }
 
     /* Connection UI Specifics */
@@ -625,32 +772,38 @@
       gap: 6px;
       padding-left: 6px;
       margin-left: 6px;
-      border-left: 2px solid rgba(255,255,255,0.08);
+      border-left: 2px solid rgba(255, 255, 255, 0.08);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s;
     }
+
     #connection-ui.active {
       opacity: 1;
       pointer-events: auto;
     }
+
     #nickname-input {
       width: 100px;
     }
+
     #connection-status {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background-color: #ff6b6b; /* Red = Disconnected */
+      background-color: #ff6b6b;
+      /* Red = Disconnected */
       box-shadow: 0 0 5px #ff6b6b;
       margin-bottom: 8px;
       transition: background-color 0.3s, box-shadow 0.3s;
     }
+
     #connection-status.connected {
-      background-color: #51f6a5; /* Green = Connected */
+      background-color: #51f6a5;
+      /* Green = Connected */
       box-shadow: 0 0 5px #51f6a5;
     }
-    
+
     /* AVATAR SELECTOR */
     .avatar-preview {
       width: 32px;
@@ -662,17 +815,19 @@
       overflow: hidden;
       transition: transform 0.1s ease;
     }
+
     .avatar-preview:hover {
       border-color: var(--accent);
       transform: scale(1.05);
     }
+
     .avatar-preview img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       image-rendering: pixelated;
     }
-    
+
     #avatar-modal {
       position: fixed;
       top: 50%;
@@ -682,15 +837,18 @@
       border: 2px solid var(--border);
       border-radius: 12px;
       padding: 16px;
-      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
       z-index: 2000;
       display: none;
       flex-direction: column;
       gap: 10px;
       min-width: 300px;
     }
-    #avatar-modal.show { display: flex; }
-    
+
+    #avatar-modal.show {
+      display: flex;
+    }
+
     .avatar-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -698,6 +856,7 @@
       max-height: 400px;
       overflow-y: auto;
     }
+
     .avatar-option {
       width: 48px;
       height: 48px;
@@ -707,14 +866,17 @@
       transition: all 0.1s;
       background: #0b1626;
     }
+
     .avatar-option:hover {
       border-color: var(--accent);
       transform: translateY(-2px);
     }
+
     .avatar-option.selected {
       border-color: var(--accent2);
       box-shadow: 0 0 10px rgba(255, 221, 87, 0.3);
     }
+
     .avatar-option img {
       width: 100%;
       height: 100%;
@@ -722,13 +884,19 @@
       image-rendering: pixelated;
       border-radius: 6px;
     }
+
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 4px;
     }
-    .modal-title { font-size: 10px; color: var(--accent); }
+
+    .modal-title {
+      font-size: 10px;
+      color: var(--accent);
+    }
+
     .close-modal {
       background: none;
       border: none;
@@ -737,9 +905,12 @@
       font-family: inherit;
       font-size: 12px;
     }
-    .close-modal:hover { color: #ff6b6b; }
-    
-    
+
+    .close-modal:hover {
+      color: #ff6b6b;
+    }
+
+
     #status-log {
       flex: 1;
       display: flex;
@@ -750,10 +921,20 @@
       margin-top: 10px;
       pointer-events: auto;
     }
-    #status-log::-webkit-scrollbar { width: 5px; }
-    #status-log::-webkit-scrollbar-track { background: transparent; }
-    #status-log::-webkit-scrollbar-thumb { background: rgba(81,246,165,0.25); border-radius: 3px; }
-    
+
+    #status-log::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    #status-log::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #status-log::-webkit-scrollbar-thumb {
+      background: rgba(81, 246, 165, 0.25);
+      border-radius: 3px;
+    }
+
     .status-bubble {
       font-size: 9px;
       color: #c8daf0;
@@ -761,28 +942,47 @@
       padding: 8px 10px;
       border-radius: 8px;
       border: 2px solid #1a2d44;
-      box-shadow: 0 3px 0 rgba(11,22,40,0.5);
+      box-shadow: 0 3px 0 rgba(11, 22, 40, 0.5);
       animation: bubbleIn 0.2s ease;
       line-height: 1.5;
       max-width: 240px;
     }
+
     @keyframes bubbleIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    
+
     .power-models {
       margin-top: 8px;
       padding-top: 8px;
-      border-top: 1px solid rgba(255,255,255,0.08);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .power-models .pm-title { font-size: 8px; color: #a0b8d8; margin-bottom: 6px; }
-    .pm-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .power-models .pm-title {
+      font-size: 8px;
+      color: #a0b8d8;
+      margin-bottom: 6px;
+    }
+
+    .pm-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
 
     #games {
       display: flex;
       flex-direction: column;
     }
+
     .games-header {
       padding: 8px 10px 6px 10px;
       display: flex;
@@ -790,10 +990,12 @@
       align-items: center;
       border-bottom: 2px solid var(--border);
     }
+
     .games-title {
       font-size: 10px;
       color: var(--accent2);
     }
+
     .games-content {
       display: flex;
       flex-direction: row;
@@ -804,7 +1006,7 @@
     .game-card {
       position: relative;
       flex: 0 0 20%;
-      min-width: var(--game-card-min-width); 
+      min-width: var(--game-card-min-width);
       padding: 8px;
       border-radius: 10px;
       background: var(--panel2);
@@ -815,10 +1017,30 @@
       overflow: visible;
       box-shadow: var(--shadow);
     }
-    .game-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: var(--shadow2); }
-    .game-card.active { border-color: var(--accent2); box-shadow: var(--shadow2); }
-    .game-card .label { font-size: 10px; color: var(--accent2); margin-bottom: 4px; }
-    .game-card .hint { font-size: 8px; color: #adc5e6; line-height: 1.4; }
+
+    .game-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: var(--shadow2);
+    }
+
+    .game-card.active {
+      border-color: var(--accent2);
+      box-shadow: var(--shadow2);
+    }
+
+    .game-card .label {
+      font-size: 10px;
+      color: var(--accent2);
+      margin-bottom: 4px;
+    }
+
+    .game-card .hint {
+      font-size: 8px;
+      color: #adc5e6;
+      line-height: 1.4;
+    }
+
     .game-icon {
       position: absolute;
       right: 8px;
@@ -827,42 +1049,538 @@
       height: 48px;
       border-radius: 8px;
       border: 2px solid #102132;
-      background: linear-gradient(145deg, rgba(255,221,87,0.15), rgba(81,246,165,0.10));
+      background: linear-gradient(145deg, rgba(255, 221, 87, 0.15), rgba(81, 246, 165, 0.10));
       box-shadow: 0 4px 0 #0b1628;
       display: grid;
       place-items: center;
       font-size: 16px;
-      color: rgba(255,255,255,0.85);
+      color: rgba(255, 255, 255, 0.85);
     }
 
     @media (max-width: 1100px) {
-      .layout { grid-template-columns: 1fr; }
-      #games { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-      #scene { height: 480px; }
-      #portraits-strip { 
-        max-width: 100%; 
-        min-width: 100%;
-        height: 480px; 
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      #games {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      #scene {
+        height: 480px;
+      }
+    }
+
+    /* =========================================
+   MOBILE FINAL REFACTOR V10 (The Interaction Fix)
+   max-width: 768px
+   ========================================= */
+    @media (max-width: 768px) {
+
+      /* --- 1. 全局布局锁定 --- */
+      .page {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        background: radial-gradient(circle at 50% 30%, #1b2c47 0, #0c1424 100%);
+      }
+
+      header {
+        display: none;
+      }
+
+      /* --- 2. 顶部配置条 --- */
+      #hud {
+        position: static !important;
+        width: 100%;
+        height: 54px;
+        background: #0d1829;
+        border-bottom: 2px solid #20314a;
+        padding: 0;
+        margin: 0;
+        flex-shrink: 0;
+        z-index: 1000;
+      }
+
+      .hud-top {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        height: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0 10px;
+        gap: 10px;
+        scrollbar-width: none;
+      }
+
+      .hud-top::-webkit-scrollbar {
+        display: none;
+      }
+
+      .hud-config-inline,
+      .config-extra,
+      #connection-ui {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        gap: 8px;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* 隐藏不需要的输入框 */
+      #diplomacy-max-phases,
+      #diplomacy-negotiation-rounds {
+        display: none !important;
+      }
+
+      .config-extra:not(.show) {
+        display: none !important;
+      }
+
+      #connection-ui {
+        display: none !important;
+      }
+
+      #connection-ui.active {
+        display: flex !important;
+      }
+
+      .hud-top label {
+        display: none !important;
+      }
+
+      .hud-top select,
+      .hud-top input,
+      .hud-top .pill,
+      .hud-top .btn {
+        height: 32px !important;
+        line-height: 1;
+        font-size: 11px !important;
+        font-family: "Press Start 2P";
+        margin: 0 !important;
+        padding: 0 8px !important;
+        border-radius: 4px !important;
+        min-width: auto !important;
+        flex-shrink: 0 !important;
+      }
+
+      #nickname-input {
+        width: 90px !important;
+      }
+
+      .avatar-preview {
+        width: 32px !important;
+        height: 32px !important;
+        border: 2px solid #20314a;
+        box-sizing: border-box;
+      }
+
+      /* Mode Menu */
+      .mode-toggle {
+        margin: 0 !important;
+        position: static;
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+
+      .pill-mode {
+        pointer-events: auto !important;
+        position: relative;
+        z-index: 1002;
+      }
+
+      .mode-menu {
+        display: none;
+        position: fixed;
+        top: 60px;
+        right: 10px;
+        width: 140px;
+        background: #0d1829;
+        border: 2px solid var(--accent2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+        z-index: 99999;
+        padding: 4px;
+        border-radius: 8px;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .mode-toggle.open .mode-menu {
+        display: flex !important;
+      }
+
+      .mode-opt {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+        font-size: 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: #fff;
+      }
+
+      .mode-opt:active {
+        background: var(--accent);
+        color: #000;
+      }
+
+      /* --- 3. Games 区域 --- */
+      #games {
+        flex-shrink: 0;
+        margin: 0;
+        border: none;
+        border-bottom: 2px solid #20314a;
+        background: #0b1626;
+        padding: 6px;
+      }
+
+      .games-header {
+        display: none;
+      }
+
+      .games-content {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        padding: 0;
+      }
+
+      .game-card {
+        flex: 1;
+        min-width: 0;
+        height: 50px;
+        border-radius: 8px;
+        border: 2px solid var(--border);
+        background: var(--panel2);
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        position: relative;
+      }
+
+      .game-icon {
+        display: flex !important;
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        align-items: center;
+        justify-content: center;
+      }
+
+      .game-card .hint {
+        display: none !important;
+      }
+
+      .game-card .label {
+        font-size: 11px;
+        color: var(--muted);
+        z-index: 2;
+      }
+
+      .game-card.active {
+        border-color: var(--accent2);
+        background: rgba(255, 221, 87, 0.05);
+      }
+
+      .game-card.active .label {
+        color: var(--accent2);
+        font-weight: bold;
+      }
+
+      /* --- 4. 场景区 --- */
+      .layout {
+        gap: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      #scene {
+        flex: 1;
+        border: none;
+        border-radius: 0;
+        width: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      /* --- 5. 日志弹幕 --- */
+      #status-log {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        height: auto;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 800;
+        pointer-events: none;
+      }
+
+      .status-bubble {
+        background: rgba(19, 34, 56, 0.95);
+        border: 2px solid #51f6a5;
+        color: #51f6a5;
+        padding: 8px 12px;
+        border-radius: 0;
+        font-size: 10px;
+        font-family: "Press Start 2P", monospace;
+        text-align: center;
+        box-shadow: 4px 4px 0 #000;
+        animation: popIn 0.2s steps(4);
+        margin: 0;
+        text-shadow: 1px 1px 0 #000;
+      }
+
+      /* --- 6. 桌子与座位 --- */
+      #table-preview {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        display: flex !important;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .table-controls,
+      #table-players {
+        pointer-events: auto;
+      }
+
+      /* [修复]: 这里不再使用 scale(0.85) 来缩小范围，因为我们已经在 JS 里修改了半径计算。
+     transform-origin 保持默认即可。
+  */
+      #table-players {
+        position: absolute;
+        inset: 0;
+      }
+
+      .table-controls {
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        z-index: 100;
+      }
+
+      .table {
+        width: 70% !important;
+        height: 180px !important;
+      }
+
+      /* --- 7. 底部 Agents (修复交互) --- */
+      #portraits-strip {
+        /* 使用 V2 尺寸 */
+        height: 110px;
+        /* 稍微增加一点高度容纳 Header */
+        min-width: 0;
+        max-width: none;
+        flex-shrink: 0;
+        border: none;
+        border-top: 2px solid var(--border);
+        background: var(--bg2);
+        display: flex;
+        flex-direction: column;
+        z-index: 2000;
+        /* [关键修复] 提升层级，确保在最上层，可点击 */
+        pointer-events: auto !important;
+        /* [关键修复] 强制开启交互 */
+      }
+
+      /* [关键修复] 保证 Header 有高度，Random 按钮不塌陷 */
+      .portraits-header {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        flex-shrink: 0;
+        min-height: 30px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--bg2);
+        /* 防止透明穿透 */
+        pointer-events: auto !important;
+      }
+
+      #random-select-btn {
+        display: inline-block !important;
+        font-size: 9px !important;
+        padding: 4px 8px !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+
+      #portraits-grid {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        padding: 6px 8px;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 100%;
+        align-items: center;
+        /* [关键修复] 优化触摸滚动体验 */
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;
+        pointer-events: auto !important;
+      }
+
+      .portrait-card {
+        flex: 0 0 auto;
+        width: 60px;
+        height: 80px;
+        margin: 0;
+        padding: 3px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        pointer-events: auto !important;
+      }
+
+      .portrait-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 4px;
+        background: #000;
+      }
+
+      .portrait-name {
+        font-size: 8px;
+        margin-top: 2px;
+        height: 10px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-align: center;
+        color: #fff;
+      }
+
+      .portrait-model {
+        display: none !important;
+      }
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    /* ================= 手机端强制覆盖 (Mobile Override) ================= */
+    @media (max-width: 768px) {
+      
+      /* ... (这里是你之前的其他手机端布局代码，如 header display:none 等) ... */
+
+      /* 1. 强制重置侧边栏：从竖条变成底部横条 */
+      #portraits-strip {
+        /* 解除电脑端的宽高限制 */
+        max-width: none;
+        min-width: 0;
+        width: 100%;
+        
+        /* 压扁高度 */
+        height: 100px !important;      
+        
+        /* 沉底布局 */
+        margin-top: auto;
+        display: flex;
+        flex-direction: column; 
+        border-top: 2px solid var(--border);
+        background: var(--bg2);
+        z-index: 2000;
+      }
+
+      /* 2. 强制重置网格：从 Grid 变成 Flex 单行横滑 */
+      #portraits-grid {
+        display: flex;        /* 覆盖 display: grid */
+        flex-direction: row;  /* 改为横向 */
+        grid-template-columns: none; /* 取消列定义 */
+        
+        /* 切换滚动方向 */
+        overflow-y: hidden;   
+        overflow-x: auto;     
+        
+        padding: 4px 8px;
+        gap: 8px;
+      }
+      
+      /* 3. 强制重置卡片大小：适应横条 */
+      .portrait-card {
+        width: 60px;         
+        min-width: 60px;     
+        height: 100%;        
+        padding: 2px;
+        margin: 0;
+      }
+      
+      /* 隐藏名字和调整标签，为了美观 */
+      .portrait-name { display: none; }
+      
+      .portrait-model {
+        top: 2px;
+        font-size: 5px;
+        padding: 1px 3px;
+        max-width: 56px;
       }
     }
   </style>
 </head>
+
 <body>
   <div class="page">
     <header>
-        <div>
-          <div class="title">AgentEvolver Game Arena</div>
-          <div class="subtitle">
-            <span class="step-hint" data-target="games">Select Game</span>
-            <span class="step-separator"> >> </span>
-            <span class="step-hint" data-target="agents">Select Agent</span>
-            <span class="step-separator"> >> </span>
-            <span class="step-hint" data-target="scene">Fill Config</span>
-            <span class="step-separator"> >> </span>
-            <span class="step-hint" data-target="start-btn">Start Arena</span>
-          </div>
+      <div>
+        <div class="title">AgentEvolver Game Arena</div>
+        <div class="subtitle">
+          <span class="step-hint" data-target="games">Select Game</span>
+          <span class="step-separator"> >> </span>
+          <span class="step-hint" data-target="agents">Select Agent</span>
+          <span class="step-separator"> >> </span>
+          <span class="step-hint" data-target="scene">Fill Config</span>
+          <span class="step-separator"> >> </span>
+          <span class="step-hint" data-target="start-btn">Start Arena</span>
         </div>
-      <div class="subtitle"><a id="open-config" href="/static/character_config.html" style="color: var(--accent2); text-decoration: none;">Agent Config</a></div>
+      </div>
+      <div class="subtitle"><a id="open-config" href="/static/character_config.html"
+          style="color: var(--accent2); text-decoration: none;">Agent Config</a></div>
     </header>
 
     <div id="games" class="panel" style="margin-bottom: 10px;">
@@ -888,47 +1606,49 @@
         <div id="hud">
           <div class="hud-top">
             <div class="pill" style="min-width: 80px;"><strong>Team</strong><span id="counter">0/0</span></div>
-            <div class="pill" id="selection-hint-pill" style="display: none; min-width: 120px; border-color: var(--accent2);">
+            <div class="pill" id="selection-hint-pill"
+              style="display: none; min-width: 120px; border-color: var(--accent2);">
               <span id="selection-hint">Hint</span>
             </div>
-            
+
             <div class="hud-config-inline">
               <div class="config-extra" id="avalon-fields">
                 <div class="config-item">
                   <label for="avalon-num-players">players</label>
                   <select id="avalon-num-players">
                     <option value="5">5</option>
-                    <option value="6" disabled style="color: #666;">6</option>
-                    <option value="7" disabled style="color: #666;">7</option>
-                    <option value="8" disabled style="color: #666;">8</option>
-                    <option value="9" disabled style="color: #666;">9</option>
-                    <option value="10" disabled style="color: #666;">10</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
                   </select>
                 </div>
                 <div class="config-item">
                   <label for="avalon-language">language</label>
                   <select id="avalon-language">
                     <option value="en">EN</option>
-                    <option value="zh">ZH</option>
+                    <option value="zh" selected>ZH</option>
                   </select>
                 </div>
-                <button class="btn secondary" type="button" id="avalon-reroll-roles" style="font-size: 7px; padding: 6px 8px;">random</button>
+                <button class="btn secondary" type="button" id="avalon-reroll-roles"
+                  style="font-size: 7px; padding: 6px 8px;">random</button>
 
                 <div id="connection-ui">
-                   <div id="connection-status" title="Disconnected"></div>
-                   
-                   <div class="config-item">
-                     <label>Avatar</label>
-                     <div id="my-avatar-preview" class="avatar-preview">
-                        <img src="/static/portraits/portrait_human.png" alt="My Avatar">
-                     </div>
-                   </div>
+                  <div id="connection-status" title="Disconnected"></div>
 
-                   <div class="config-item">
-                     <label for="nickname-input">nickname</label>
-                     <input type="text" id="nickname-input" placeholder="Name" maxlength="12">
-                   </div>
-                   <button class="btn" id="connect-btn" style="font-size: 7px; padding: 6px 10px;">Connect</button>
+                  <div class="config-item">
+                    <label>Avatar</label>
+                    <div id="my-avatar-preview" class="avatar-preview">
+                      <img src="/static/portraits/portrait_human.png" alt="My Avatar">
+                    </div>
+                  </div>
+
+                  <div class="config-item">
+                    <label for="nickname-input">nickname</label>
+                    <input type="text" id="nickname-input" placeholder="Name" maxlength="12">
+                  </div>
+                  <button class="btn" id="connect-btn" style="font-size: 7px; padding: 6px 10px;">Connect</button>
                 </div>
               </div>
 
@@ -952,7 +1672,8 @@
                     <option value="zh">ZH</option>
                   </select>
                 </div>
-                <button class="btn secondary" type="button" id="diplomacy-shuffle-powers" style="font-size: 7px; padding: 6px 8px;">random</button>
+                <button class="btn secondary" type="button" id="diplomacy-shuffle-powers"
+                  style="font-size: 7px; padding: 6px 8px;">random</button>
               </div>
             </div>
 
@@ -979,7 +1700,7 @@
             <button class="btn btn-start" id="start-btn">start</button>
           </div>
         </div>
-        
+
         <div id="ground"></div>
       </div>
 
@@ -995,12 +1716,13 @@
 
   <div id="avatar-modal">
     <div class="modal-header">
-        <div class="modal-title">Select Avatar</div>
-        <button class="close-modal" id="close-avatar-modal">✕</button>
+      <div class="modal-title">Select Avatar</div>
+      <button class="close-modal" id="close-avatar-modal">✕</button>
     </div>
     <div class="avatar-grid" id="avatar-selection-grid"></div>
   </div>
 
   <script src="/static/main.js"></script>
 </body>
+
 </html>

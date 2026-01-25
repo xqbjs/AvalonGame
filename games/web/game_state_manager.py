@@ -31,6 +31,59 @@ class GameStateManager:
         self.should_stop: bool = False
         self.game_thread: Optional[Any] = None
         self.history: list[Dict[str, Any]] = []
+        
+    # [新增常量] 定义一个特殊的哨兵值，用于打断 input queue
+    STOP_SENTINEL = "___GAME_STOP_SENTINEL___"
+
+    def stop_game(self):
+        """Stop the current game and unblock waiting agents."""
+        self.should_stop = True
+        self.update_game_state(status="stopped")
+        
+        # [NEW] 核心修复：向所有正在等待输入的队列注入哨兵值
+        # 这样正在 await get_user_input 的 Agent 会立即苏醒并收到错误，从而结束运行
+        for agent_id, q in self.input_queues.items():
+            try:
+                q.put(self.STOP_SENTINEL)
+            except Exception:
+                pass
+
+        if hasattr(self, '_game_task') and self._game_task:
+            try:
+                self._game_task.cancel()
+            except Exception:
+                pass
+    
+    # ... (reset method remains similar, or you can add self.input_queues.clear())
+
+    async def get_user_input(self, agent_id: str, timeout: Optional[float] = None) -> str:
+        if agent_id not in self.input_queues:
+            self.input_queues[agent_id] = queue.Queue()
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            def get_from_queue():
+                if timeout:
+                    try:
+                        val = self.input_queues[agent_id].get(timeout=timeout)
+                    except queue.Empty:
+                        raise TimeoutError(f"Timeout waiting for user input from agent {agent_id}")
+                else:
+                    val = self.input_queues[agent_id].get()
+                
+                # [NEW] 检查哨兵值
+                if val == self.STOP_SENTINEL:
+                    raise InterruptedError("Game Force Stopped by Host")
+                return val
+            
+            return await loop.run_in_executor(None, get_from_queue)
+        except InterruptedError:
+            # 向上层抛出异常，以便 run_web_game.py 的主循环能捕获并退出
+            raise
+        except Exception as e:
+            # ... (Error handling)
+            raise
     
     def set_mode(self, mode: str, user_agent_id: Optional[str] = None, game: Optional[str] = None):
         """Set the game mode and game name."""
@@ -38,20 +91,14 @@ class GameStateManager:
         self.mode = mode
         self.user_agent_id = user_agent_id
     
-    def stop_game(self):
-        """Stop the current game."""
-        self.should_stop = True
-        self.update_game_state(status="stopped")
-        if hasattr(self, '_game_task') and self._game_task:
-            try:
-                self._game_task.cancel()
-            except Exception:
-                pass
     
     def reset(self):
         """Reset the game state manager."""
         self.should_stop = False
         self.game_thread = None
+        # [NEW] 必须清空输入队列，防止上一局的垃圾数据污染新游戏
+        self.input_queues.clear()
+        
         current_game = self.game_state.get("game")
         self.game_state = {
             "game": current_game,
@@ -78,28 +125,28 @@ class GameStateManager:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.input_queues[agent_id].put, content)
     
-    async def get_user_input(self, agent_id: str, timeout: Optional[float] = None) -> str:
-        if agent_id not in self.input_queues:
-            self.input_queues[agent_id] = queue.Queue()
+    # async def get_user_input(self, agent_id: str, timeout: Optional[float] = None) -> str:
+    #     if agent_id not in self.input_queues:
+    #         self.input_queues[agent_id] = queue.Queue()
         
-        try:
-            loop = asyncio.get_event_loop()
+    #     try:
+    #         loop = asyncio.get_event_loop()
             
-            def get_from_queue():
-                if timeout:
-                    try:
-                        return self.input_queues[agent_id].get(timeout=timeout)
-                    except queue.Empty:
-                        raise TimeoutError(f"Timeout waiting for user input from agent {agent_id}")
-                return self.input_queues[agent_id].get()
+    #         def get_from_queue():
+    #             if timeout:
+    #                 try:
+    #                     return self.input_queues[agent_id].get(timeout=timeout)
+    #                 except queue.Empty:
+    #                     raise TimeoutError(f"Timeout waiting for user input from agent {agent_id}")
+    #             return self.input_queues[agent_id].get()
             
-            return await loop.run_in_executor(None, get_from_queue)
-        except TimeoutError:
-            raise
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            raise
+    #         return await loop.run_in_executor(None, get_from_queue)
+    #     except TimeoutError:
+    #         raise
+    #     except Exception as e:
+    #         import traceback
+    #         traceback.print_exc()
+    #         raise
     
     async def broadcast_message(self, message: Dict[str, Any]):
         if self.should_stop:
@@ -126,6 +173,10 @@ class GameStateManager:
         self.websocket_connections.pop(connection_id, None)
     
     def update_game_state(self, **kwargs):
+        # [NEW] 如果游戏已经被标记停止，且本次更新不是为了设置为 stopped/finished，则忽略
+        # 这样可以防止游戏逻辑在被强制 terminate 后还在尝试更新 phase 或 round
+        if self.should_stop and kwargs.get("status") not in ["stopped", "finished"]:
+            return
         self.game_state.update(kwargs)
         if self.game_state.get("game") == "diplomacy":
             snapshot_keys = ["phase", "round", "status", "map_svg", "obs_log_entry", "logs", "mission_id", "round_id", "leader"]

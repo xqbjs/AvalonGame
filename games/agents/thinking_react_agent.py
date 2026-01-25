@@ -18,6 +18,75 @@ class ThinkingReActAgent(ReActAgent):
     and is only stored in the agent's own memory, not broadcasted to other agents.
     """
     
+    # def __init__(
+    #     self,
+    #     name: str,
+    #     sys_prompt: str,
+    #     model: ChatModelBase,
+    #     formatter,
+    #     toolkit=None,
+    #     memory=None,
+    #     long_term_memory=None,
+    #     long_term_memory_mode: Literal["agent_control", "static_control", "both"] = "both",
+    #     enable_meta_tool: bool = False,
+    #     parallel_tool_calls: bool = False,
+    #     knowledge=None,
+    #     enable_rewrite_query: bool = True,
+    #     plan_notebook=None,
+    #     print_hint_msg: bool = False,
+    #     max_iters: int = 10,
+    #     thinking_sys_prompt: str | None = None,
+    #     # thinking_tag_start_end: tuple[str, str] = ("<privacy_think>", "</privacy_think>"),
+    #     thinking_tag_start_end: tuple[str, str] = ("<think>", "</think>"),
+    # ) -> None:
+    #     """Initialize a ThinkingReActAgent.
+        
+    #     Args:
+    #         thinking_sys_prompt: Optional system prompt for the thinking phase.
+    #             If not provided, will use a default prompt that asks the agent
+    #             to think first, then respond.
+    #         Other args: Same as ReActAgent.
+    #     """
+    #     super().__init__(
+    #         name=name,
+    #         sys_prompt=sys_prompt,
+    #         model=model,
+    #         formatter=formatter,
+    #         toolkit=toolkit,
+    #         memory=memory,
+    #         long_term_memory=long_term_memory,
+    #         long_term_memory_mode=long_term_memory_mode,
+    #         enable_meta_tool=enable_meta_tool,
+    #         parallel_tool_calls=parallel_tool_calls,
+    #         knowledge=knowledge,
+    #         enable_rewrite_query=enable_rewrite_query,
+    #         plan_notebook=plan_notebook,
+    #         print_hint_msg=print_hint_msg,
+    #         max_iters=max_iters,
+    #     )
+        
+    #     # System prompt for thinking phase
+    #     thinking_tag_start, thinking_tag_end = thinking_tag_start_end
+    #     self.thinking_tag_start = thinking_tag_start
+    #     self.thinking_tag_end = thinking_tag_end
+    #     if thinking_sys_prompt is None:
+    #         thinking_sys_prompt = (
+    #             "Before you respond, think carefully about your response. "
+    #             f"Your thinking process should be wrapped in {thinking_tag_start}...{thinking_tag_end} tags. "
+    #             "Then provide your actual response after the thinking section. "
+    #             "Example format:\n"
+    #             f"{thinking_tag_start}\n"
+    #             "Your private thinking here...\n"
+    #             f"{thinking_tag_end}\n"
+    #             "Your actual response here."
+    #         )
+        
+    #     # Append thinking instruction to system prompt permanently
+    #     # No need to switch it back and forth in reply method
+    #     self._sys_prompt = f"{self._sys_prompt}\n\n{thinking_sys_prompt}"
+        
+    #     # Store model call history: list of dicts with 'prompt' and 'response'
+    #     self.model_call_history: list[dict[str, Any]] = []
     def __init__(
         self,
         name: str,
@@ -36,17 +105,10 @@ class ThinkingReActAgent(ReActAgent):
         print_hint_msg: bool = False,
         max_iters: int = 10,
         thinking_sys_prompt: str | None = None,
-        # thinking_tag_start_end: tuple[str, str] = ("<privacy_think>", "</privacy_think>"),
         thinking_tag_start_end: tuple[str, str] = ("<think>", "</think>"),
+        language: str = "en", # [NEW] 新增语言参数，默认为英文兼容旧代码
     ) -> None:
-        """Initialize a ThinkingReActAgent.
-        
-        Args:
-            thinking_sys_prompt: Optional system prompt for the thinking phase.
-                If not provided, will use a default prompt that asks the agent
-                to think first, then respond.
-            Other args: Same as ReActAgent.
-        """
+        """Initialize a ThinkingReActAgent."""
         super().__init__(
             name=name,
             sys_prompt=sys_prompt,
@@ -69,23 +131,38 @@ class ThinkingReActAgent(ReActAgent):
         thinking_tag_start, thinking_tag_end = thinking_tag_start_end
         self.thinking_tag_start = thinking_tag_start
         self.thinking_tag_end = thinking_tag_end
+        
+        # [修改] 根据语言自动选择提示词
         if thinking_sys_prompt is None:
-            thinking_sys_prompt = (
-                "Before you respond, think carefully about your response. "
-                f"Your thinking process should be wrapped in {thinking_tag_start}...{thinking_tag_end} tags. "
-                "Then provide your actual response after the thinking section. "
-                "Example format:\n"
-                f"{thinking_tag_start}\n"
-                "Your private thinking here...\n"
-                f"{thinking_tag_end}\n"
-                "Your actual response here."
-            )
+            if language == "zh" or language == "cn":
+                # 中文版思考指令
+                thinking_sys_prompt = (
+                    "在回答之前，请仔细思考。"
+                    f"你的思考过程必须包裹在 {thinking_tag_start}...{thinking_tag_end} 标签中。"
+                    "思考结束后，在标签外输出你的实际回答。"
+                    "示例格式：\n"
+                    f"{thinking_tag_start}\n"
+                    "你的私密思考过程...\n"
+                    f"{thinking_tag_end}\n"
+                    "你的实际回答。"
+                )
+            else:
+                # 英文版思考指令 (原版)
+                thinking_sys_prompt = (
+                    "Before you respond, think carefully about your response. "
+                    f"Your thinking process should be wrapped in {thinking_tag_start}...{thinking_tag_end} tags. "
+                    "Then provide your actual response after the thinking section. "
+                    "Example format:\n"
+                    f"{thinking_tag_start}\n"
+                    "Your private thinking here...\n"
+                    f"{thinking_tag_end}\n"
+                    "Your actual response here."
+                )
         
         # Append thinking instruction to system prompt permanently
-        # No need to switch it back and forth in reply method
         self._sys_prompt = f"{self._sys_prompt}\n\n{thinking_sys_prompt}"
         
-        # Store model call history: list of dicts with 'prompt' and 'response'
+        # Store model call history
         self.model_call_history: list[dict[str, Any]] = []
     
     async def _reasoning(

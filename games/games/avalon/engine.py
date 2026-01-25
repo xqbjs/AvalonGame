@@ -154,6 +154,38 @@ class AvalonBasicConfig(BaseModel):
         num_players_for_quest = cls.QUEST_PRESET[num_players][1]
         num_fails_for_quest = cls.QUEST_PRESET[num_players][2]
 
+        # [NEW] 核心修复：根据人数自动开启特殊角色开关
+        # 默认只有 Merlin=True (在类定义里)
+        role_flags = {}
+        
+        if num_players == 5:
+            # 5人局 (3好2坏): 梅林+派西维尔 vs 莫甘娜+刺客
+            # 这是一个对好人更有挑战性的板子，比默认的"爪牙"更有趣
+            role_flags = {"percival": True, "morgana": True, "mordred": False, "oberon": False}
+            
+        elif num_players == 6:
+            # 6人局 (4好2坏): 同上
+            role_flags = {"percival": True, "morgana": True, "mordred": False, "oberon": False}
+            
+        elif num_players == 7:
+            # 7人局 (4好3坏): 进阶板子，加入莫德雷德 (梅林看不到的大哥)
+            role_flags = {"percival": True, "morgana": True, "mordred": True, "oberon": False}
+            
+        elif num_players == 8:
+            # 8人局 (5好3坏): 同7人
+            role_flags = {"percival": True, "morgana": True, "mordred": True, "oberon": False}
+            
+        elif num_players == 9:
+            # 9人局 (6好3坏): 同7人
+            role_flags = {"percival": True, "morgana": True, "mordred": True, "oberon": False}
+            
+        elif num_players == 10:
+            # 10人局 (6好4坏): 全明星大乱斗，加入奥伯伦 (不知道队友的孤狼)
+            role_flags = {"percival": True, "morgana": True, "mordred": True, "oberon": True}
+        
+        # 将自动计算的开关合并到 kwargs 中
+        kwargs.update(role_flags)
+
         return cls(
             num_players=num_players,
             num_good=num_good,
@@ -626,16 +658,3 @@ class AvalonScoring():
         '''
         return np.mean(vote_outcome)
     
-# if __name__ == "__main__":
-#     config = AvalonBasicConfig(num_players=5)
-#     scoring = AvalonScoring(config)
-
-#     true_sides = [[0, 0, 1, 1, 1]]
-#     believed_sides = [[0.8, 0.3, 0.7, 0.6, 0.5]]
-
-#     # believed_sides = np.array(believed_sides) + 0.01
-#     # # print(np.sum(believed_sides, axis=-1, keepdims=True).reshape(2, 5))
-#     # believed_sides = believed_sides / np.sum(believed_sides, axis=-1, keepdims=True)
-#     # print(believed_sides)
-
-#     print(scoring.deduction_acc(true_player_sides=true_sides, believed_player_sides=believed_sides))

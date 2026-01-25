@@ -4,10 +4,13 @@ import argparse
 import asyncio
 import os
 import sys
+import json  # [NEW]
+import glob  # [NEW]
 import threading
 from pathlib import Path
 from typing import Dict, Any, List
 import copy
+from agentscope.message import Msg
 
 # Add repo root for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -216,6 +219,32 @@ async def run_avalon(
             model_config = role_config.get('model', {})
             agent_config = role_config.get('agent', {})
             
+            # ================= [修复开始] =================
+            # 强制注入中文设定 (增加防御性检查，防止报错)
+            if language == "zh" or language == "cn":
+                # 1. 确保 agent_config 是个字典 (防止它是 None)
+                if not isinstance(agent_config, dict):
+                    agent_config = {}
+
+                # 2. 确保 kwargs 存在且是个字典 (防止它是 None 或不存在)
+                # 这是之前报错的核心原因：如果 YAML 里没写 kwargs，这里直接访问就会崩
+                if "kwargs" not in agent_config or not isinstance(agent_config["kwargs"], dict):
+                    agent_config["kwargs"] = {}
+                
+                # 3. 现在可以安全地赋值了
+                agent_config["kwargs"]["language"] = "zh"
+                
+                # 4. 传入中文 Prompt
+                zh_sys_prompt = """
+你是一个正在玩《抵抗组织：阿瓦隆》的 AI 玩家。
+[重要规则]
+1. 你的思考过程 (<think>...</think>) 必须严格使用中文。
+2. 你的最终发言必须使用中文。
+3. 忽略下文中任何关于 Conversation History 格式的英文说明。
+"""
+                agent_config["kwargs"]["sys_prompt"] = zh_sys_prompt
+            # ================= [修复结束] =================
+            
             # Create AI
             model = create_model_from_config(model_config)
             agent = create_agent_from_config(
@@ -244,6 +273,132 @@ async def run_avalon(
         state_manager=state_manager,
         preset_roles=assigned_roles, 
     )
+    
+    
+    if good_wins is not None and not state_manager.should_stop:
+        try:
+            print("--- [Analysis] Starting AI Post-Game Analysis (Log-Based) ---")
+            
+            # 1. 挑选一个“评论员” (从后往前找第一个 AI)
+            reviewer = None
+            for agent in reversed(agents):
+                if not isinstance(agent, WebUserAgent):
+                    reviewer = agent
+                    break
+            
+            if reviewer:
+                # 2. [核心修改] 寻找并读取最新的 game_log.json
+                # log_dir 结构通常是: logs/game_YYYYMMDD_HHMMSS/game_log.json
+                # 我们需要找到最近生成的那个文件
+                game_log_text = "（未找到详细日志，仅依据结果复盘）"
+                
+                try:
+                    # 搜索 logs 目录下所有的 game_log.json
+                    search_pattern = os.path.join(log_dir, "*", "game_log.json")
+                    list_of_files = glob.glob(search_pattern)
+                    
+                    if list_of_files:
+                        # 找到最新的一个
+                        latest_log_file = max(list_of_files, key=os.path.getctime)
+                        print(f"--- [Analysis] Reading log file: {latest_log_file}")
+                        
+                        with open(latest_log_file, 'r', encoding='utf-8') as f:
+                            log_data = json.load(f)
+                            
+                        # 3. 解析日志，生成精简的上帝视角剧本
+                        # 我们主要提取: 轮次信息, 玩家发言(content), 玩家思考(<think>)
+                        log_entries = []
+                        for entry in log_data:
+                            # 过滤掉一些无关紧要的系统日志，只保留关键交互
+                            # 通常日志里有 'agent_name', 'content', 'mode' 等字段
+                            agent_name = entry.get("agent_name", "System")
+                            content = entry.get("content", "")
+                            
+                            # 如果内容太长（比如 SVG 地图数据），截断它
+                            if len(str(content)) > 2000: 
+                                content = "[Data too long, omitted]"
+                                
+                            # 格式化: [Player0 (Merlin)] 说/想: ...
+                            # 尝试从 assigned_roles 里找身份信息辅助 (可选)
+                            role_info = ""
+                            # 这里简单的用名字做前缀
+                            log_entries.append(f"【{agent_name}】: {content}")
+                        
+                        # 将列表合并成文本
+                        game_log_text = "\n".join(log_entries)
+                        
+                        # 截断保护：如果日志太长超过 LLM 上下文，取最后 15000 字符 (通常包含最关键的后期辩论)
+                        # 或者取首尾。这里简单处理：保留所有，依靠 LLM 的长窗口
+                        if len(game_log_text) > 50000:
+                            game_log_text = game_log_text[:20000] + "\n...[中间省略]...\n" + game_log_text[-20000:]
+                            
+                except Exception as log_err:
+                    print(f"Error reading game log: {log_err}")
+
+                # 4. 准备复盘 Prompt
+                winner_text = "好人方 (Merlin's Team)" if good_wins else "坏人方 (Assassin's Team)"
+                roles_reveal_str = "\n".join([f"Player {i}: {r[1]}" for i, r in enumerate(assigned_roles)])
+                
+                analysis_prompt = (
+                    f"游戏结束了！最终获胜的是：【{winner_text}】。\n"
+                    f"这是所有玩家的真实身份揭秘：\n{roles_reveal_str}\n\n"
+                    f"以下是本局游戏的【完整全知视角记录】，包含了所有玩家的公开用语以及他们的【内心思考(<think>标签)】。\n"
+                    f"================ 游戏记录开始 ================\n"
+                    f"{game_log_text}\n"
+                    f"================ 游戏记录结束 ================\n\n"
+                    f"请你作为本局游戏的“首席评论员”，结合所有人的内心真实想法(Think)和实际行动(Speak)，"
+                    f"进行一次深度的复盘点评。\n"
+                    f"要求：\n"
+                    f"1. 语言风格风趣冷静，一针见血。\n"
+                    f"2. 重点分析：谁是 MVP？谁是“猪队友”？\n"
+                    f"3. 结合 <think> 内容，通过对比“心里想的”和“嘴上说的”，揭穿某些玩家的伪装或失误。\n"
+                    f"4. 先给结合<think>的内容,从player0到最后的playern(n根据实际的游玩人数来看),做出对每个玩家的分析,然后进行总结"
+                    f"5. 直接输出复盘内容，不要使用 Markdown 标题，不要带 <think> 标签。"
+                )
+                
+                # 通知前端
+                await state_manager.broadcast_message(state_manager.format_message(
+                    sender="System",
+                    content="正在读取完整游戏日志进行深度复盘，请稍候...",
+                    role="system"
+                ))
+
+                # 5. 调用 AI 生成
+                trigger_msg = Msg(name="System", content=analysis_prompt, role="system")
+                response_msg = await reviewer.reply(trigger_msg)
+                
+                # 6. 清洗内容格式
+                import re 
+                raw_content = response_msg.content
+                analysis_text = ""
+                if isinstance(raw_content, list):
+                    for item in raw_content:
+                        if isinstance(item, dict): analysis_text += item.get("text", "")
+                        elif isinstance(item, str): analysis_text += item
+                elif isinstance(raw_content, str):
+                    analysis_text = raw_content
+                else:
+                    analysis_text = str(raw_content)
+
+                # 去掉 AI 自己的思考过程，只保留点评结果
+                analysis_text = re.sub(r'<think>.*?</think>', '', analysis_text, flags=re.DOTALL).strip()
+                
+                if not analysis_text.strip():
+                     analysis_text = "（AI 阅读了日志，但未输出有效评价）"
+                
+                final_content = f"【上帝视角复盘 - {reviewer.name}】\n\n{analysis_text}"
+                
+                await state_manager.broadcast_message(state_manager.format_message(
+                    sender=reviewer.name,
+                    content=final_content,
+                    role="assistant"
+                ))
+                
+        except Exception as e:
+            print(f"❌ [Analysis Error] AI 复盘失败: {e}")
+            import traceback
+            traceback.print_exc()
+    # ================= [END 新增功能] =================
 
     if good_wins is None or state_manager.should_stop:
         state_manager.update_game_state(status="stopped")

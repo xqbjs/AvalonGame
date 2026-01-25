@@ -28,12 +28,16 @@ class EnglishPrompts:
             4. Assassination: If 3 quests succeed, Assassin attempts to assassinate Merlin.
 
         # GAME ROLES
-        - Setup: {num_players} players (0-{max_player_id}). Good: {num_good} ({merlin_count} Merlin, {servant_count} Servant). Evil: {num_evil} ({assassin_count} Assassin, {minion_count} Minion)
+        - Setup: {num_players} players (0-{max_player_id}). Good: {num_good}. Evil: {num_evil}.
         - Roles: 
-            1. Servant (Good): No Evil knowledge. Goal: 3 quests succeed
-            2. Minion (Evil): Knows Evil players. Goal: Fail 3 quests undetected
-            3. Merlin (Good): Knows Evil players. Goal: 3 quests succeed without revealing identity
-            4. Assassin (Evil): Knows Evil players. Goal: Kill Merlin (Evil wins even if 3 quests succeeded)
+            1. Servant (Good): No Evil knowledge. Goal: 3 quests succeed.
+            2. Merlin (Good): Knows Evil players (except Mordred). Goal: 3 quests succeed without revealing identity.
+            3. Percival (Good): Knows Merlin and Morgana (but not who is who). Goal: Protect Merlin.
+            4. Minion (Evil): Knows Evil players. Goal: Fail 3 quests undetected.
+            5. Assassin (Evil): Knows Evil players. Goal: Kill Merlin.
+            6. Morgana (Evil): Appears as Merlin to Percival. Goal: Deceive Percival.
+            7. Mordred (Evil): Unknown to Merlin. Goal: Deceive Merlin.
+            8. Oberon (Evil): Unknown to other Evil players, and does not know other Evil players.
 
         # GAME GUIDANCE
         - Use your best judgment to achieve your objectives.
@@ -68,6 +72,10 @@ class EnglishPrompts:
     to_agent_role_no_visibility = (
         "You don't know other players' identities."
     )
+    
+    # [NEW] Visibility Info Templates
+    info_player_is_evil = "{player_name} is Evil"
+    info_player_is_merlin_or_morgana = "{player_name} is Merlin or Morgana"
 
     to_all_team_selection = (
         "Mission {mission_id}, Round {round_id}. Team Selection Phase. "
@@ -159,12 +167,16 @@ class ChinesePrompts:
             4. 刺杀阶段：如果 3 个任务成功，刺客尝试刺杀梅林。
 
         # 游戏角色
-        - 设置：{num_players} 名玩家 (0-{max_player_id})。好人：{num_good} 名 ({merlin_count} 名梅林，{servant_count} 名忠臣)。坏人：{num_evil} 名 ({assassin_count} 名刺客，{minion_count} 名爪牙)
+        - 设置：{num_players} 名玩家 (0-{max_player_id})。好人：{num_good}。坏人：{num_evil}。
         - 角色： 
-            1. 忠臣（好人）：不知道坏人身份。目标：让 3 个任务成功
-            2. 爪牙（坏人）：知道坏人身份。目标：让 3 个任务失败而不被发现
-            3. 梅林（好人）：知道坏人身份。目标：让 3 个任务成功而不暴露身份
-            4. 刺客（坏人）：知道坏人身份。目标：刺杀梅林（即使 3 个任务成功，如果梅林被刺杀，坏人获胜）
+            1. 忠臣（好人）：不知道坏人身份。目标：让 3 个任务成功。
+            2. 梅林（好人）：知道坏人身份（除了莫德雷德）。目标：让 3 个任务成功而不暴露身份。
+            3. 派西维尔（好人）：知道梅林和莫甘娜（但分不清谁是谁）。目标：保护梅林。
+            4. 爪牙（坏人）：知道坏人身份。目标：让 3 个任务失败而不被发现。
+            5. 刺客（坏人）：知道坏人身份。目标：刺杀梅林。
+            6. 莫甘娜（坏人）：在派西维尔眼里显示为梅林。目标：欺骗派西维尔。
+            7. 莫德雷德（坏人）：梅林看不到他。目标：欺骗梅林。
+            8. 奥伯伦（坏人）：不知道队友，队友也不知道他。
 
         # 游戏指导
         - 运用你的最佳判断来实现目标。
@@ -173,8 +185,9 @@ class ChinesePrompts:
         - 讨论、逻辑推理和说服很重要。
         - 很少向其他玩家透露你的真实身份。
 
-        # 注意事项
-        - [重要] 不要编造任何未由主持人或其他玩家提供的信息。
+        # 语言与格式要求 (非常重要)
+        - [强制] 你必须全程使用**中文 (Chinese)** 进行思考和发言。即便其他玩家使用英文，你也必须回复中文。
+        - [强制] 直接输出你的对话内容，**不要**包含任何 XML 标签（如 <agent>）、角色前缀（如 Player1:）或 markdown 代码块。
         - 你的回答应该具体而简洁。
         - 不要重复其他人的发言。
         """
@@ -192,12 +205,16 @@ class ChinesePrompts:
     )
 
     to_agent_role_with_visibility = (
-        "你可以看到所有玩家的阵营：{sides_info}。"
+        "你可以看到以下信息：{sides_info}。"
     )
 
     to_agent_role_no_visibility = (
         "你不知道其他玩家的身份。"
     )
+    
+    # Visibility Info Templates
+    info_player_is_evil = "{player_name} 是坏人"
+    info_player_is_merlin_or_morgana = "{player_name} 是梅林或莫甘娜"
 
     to_all_team_selection = (
         "任务 {mission_id}，第 {round_id} 轮。组队阶段。"
@@ -220,7 +237,7 @@ class ChinesePrompts:
     to_all_discuss = (
         "任务 {mission_id} 组队。队长是玩家 {team_leader_id}。"
         "团队大小为 {team_size}。现在所有玩家可以讨论。"
-        "请轮流发言，表达你对组队的想法。"
+        "请轮流**用中文**发言，表达你对组队的想法。"
     )
 
     to_all_team_vote = (
@@ -261,4 +278,3 @@ class ChinesePrompts:
 
     to_all_good_wins = "好人获胜！"
     to_all_evil_wins = "坏人获胜！"
-

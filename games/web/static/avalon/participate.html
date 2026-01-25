@@ -1,30 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Avalon Game - Participate Mode</title>
     <link rel="stylesheet" href="/static/avalon/css/style.css?v=20251214">
     <script>
         window.__EARLY_INIT__ = { hasGameConfig: false, isGameRunning: false, config: null, portraits: null };
-        (function() {
+        (function () {
             try {
                 var gameConfigStr = sessionStorage.getItem('gameConfig');
                 var portraitsStr = sessionStorage.getItem('selectedPortraits');
                 var myPlayerId = sessionStorage.getItem('my_player_id');
-                
+
                 // [CRITICAL FIX] 
                 // Logic: If 'my_player_id' exists, it means we came from the Lobby (Host or Guest).
                 // We DO NOT need gameConfig locally, the server has it.
                 // Force Auto-Start immediately.
-                
+
                 if (myPlayerId !== null && myPlayerId !== undefined) {
                     window.__EARLY_INIT__.hasGameConfig = true; // Pretend we have config to satisfy logic
                     if (gameConfigStr) {
                         window.__EARLY_INIT__.config = JSON.parse(gameConfigStr);
                     }
                     document.documentElement.classList.add('auto-start');
-                } 
+                }
                 // Fallback: Old local single player flow
                 else if (gameConfigStr) {
                     window.__EARLY_INIT__.hasGameConfig = true;
@@ -34,7 +37,7 @@
                 else {
                     document.documentElement.classList.add('manual-start');
                 }
-                
+
                 if (portraitsStr) {
                     window.__EARLY_INIT__.portraits = JSON.parse(portraitsStr);
                 }
@@ -46,14 +49,30 @@
     </script>
     <style>
         /* Auto-start: Show Chat & Input, Hide Setup */
-        html.auto-start #game-setup { display: none !important; }
-        html.auto-start #messages-container { display: flex !important; }
-        html.auto-start .input-container { display: flex !important; }
-        
+        html.auto-start #game-setup {
+            display: none !important;
+        }
+
+        html.auto-start #messages-container {
+            display: flex !important;
+        }
+
+        html.auto-start .input-container {
+            display: flex !important;
+        }
+
         /* Manual-start: Show Setup, Hide Chat */
-        html.manual-start #game-setup { display: block !important; }
-        html.manual-start #messages-container { display: none !important; }
-        html.manual-start .input-container { display: none !important; }
+        html.manual-start #game-setup {
+            display: block !important;
+        }
+
+        html.manual-start #messages-container {
+            display: none !important;
+        }
+
+        html.manual-start .input-container {
+            display: none !important;
+        }
 
         .waiting-message {
             color: var(--accent);
@@ -61,11 +80,303 @@
             padding: 20px;
             font-size: 10px;
         }
+
+        /* Mobile Layout Refactoring */
+        @media (max-width: 768px) {
+
+            html,
+            body {
+                height: 100%;
+                overflow: hidden;
+                /* 禁止页面整体滚动 */
+            }
+
+            .container {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                padding: 4px;
+                max-width: 100%;
+            }
+
+            /* Header 压缩 */
+            .header {
+                flex-shrink: 0;
+                margin-bottom: 4px;
+            }
+
+            .header-controls {
+                margin-bottom: 4px;
+                
+            }
+
+            .header-label,
+            .header-btn {
+                /*font-size: 10px !important;
+                padding: 4px 8px !important;
+                */
+                /* 从 10px 缩小到 8px，确保一行能放下 */
+                font-size: 9px !important; 
+                
+                /* 缩小内边距，让按钮变瘦一点 */
+                padding: 3px 7px !important;
+                
+                /* 防止文字换行 */
+                white-space: nowrap;
+                
+                /* 稍微降低行高，更紧凑 */
+                line-height: 1.2;
+            }
+
+            #status-bar {
+                font-size: 9px;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            /* 主内容区域改为垂直排列 */
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                /* 防止溢出 */
+                gap: 6px;
+            }
+
+            .map-container {
+                width: 100%;
+                height: 22vh;
+                /* 从 45vh 改为 32vh */
+                min-height: 100px;
+                flex-shrink: 0;
+                margin-right: 0;
+                border-bottom: 2px solid var(--border);
+                z-index: 5;
+                /* 确保层级 */
+            }
+
+            /* 调整内部场景适应容器 */
+            .table-scene {
+                width: 100%;
+                height: 100%;
+                border-radius: 8px;
+            }
+
+            /* 2. 彻底隐藏桌子图片（家具扔掉！） */
+            .pixel-table {
+                display: none !important;
+            }
+
+            /* 3. 确保聊天区域自动填充剩余高度 */
+            .sidebar {
+                width: 100%;
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .panel.logs-panel {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                border: 2px solid #20314a;
+                /* 确保边界清晰 */
+            }
+
+            .panel h3 {
+                display: none;
+            }
+
+            /* 隐藏标题以节省空间 */
+
+            #messages-container {
+                flex: 1;
+                overflow-y: auto;
+                min-height: 0;
+                padding: 6px;
+                background: rgba(0, 0, 0, 0.2);
+            }
+
+            /* 3. 底部输入栏优化 (改为水平排列) */
+            .input-container {
+                flex-shrink: 0;
+                padding: 6px;
+                background: #132238;
+                border-top: 1px solid #20314a;
+            }
+
+            /* 强制输入框和按钮水平并排 */
+            .input-container>div:last-child {
+                flex-direction: row !important;
+                /* 覆盖内联样式的 column */
+                align-items: center;
+                gap: 6px;
+            }
+
+            #user-input {
+                height: 36px !important;
+                /* 强制单行高度 */
+                min-height: 36px;
+                margin-bottom: 0;
+                font-size: 12px;
+                /* 防止 iOS 缩放 */
+            }
+
+            #send-button {
+                width: auto !important;
+                height: 36px;
+                padding: 0 16px;
+                margin-top: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        /* 请插入到 participate.html 的 <style> 标签结束前 */
+
+        @media (max-width: 768px) {
+            .map-container {
+                /* 1. 强制覆盖 min-height: 400px */
+                min-height: 230px !important;
+
+                /* 2. 强制指定高度，不许 flex 自动伸缩 */
+                height: 26vh !important;
+                flex: none !important;
+
+                /* 3. 确保边框和内边距包含在高度内 */
+                box-sizing: border-box !important;
+            }
+
+            /* 顺便修复侧边栏，让它自动填满剩下的空间 */
+            .sidebar {
+                height: auto !important;
+                flex: 1 !important;
+            }
+        }
+
+        /* --- 修复头像说话缩小问题 --- */
+
+        @media (max-width: 768px) {
+
+            /* 1. 定义一个【绝对不缩放】的动画
+       注意：这里 transform 里面只有 rotate，没有 scale，或者显式写 scale(1) */
+            @keyframes no-shrink-shake {
+
+                0%,
+                100% {
+                    transform: scale(1) rotate(calc(var(--base-rotation, 0deg) - 2deg));
+                }
+
+                50% {
+                    transform: scale(1) rotate(calc(var(--base-rotation, 0deg) + 2deg));
+                }
+            }
+
+            /* 2. 强制 .speaking 状态使用这个新动画 */
+            .seat.speaking {
+                /* 这里的 !important 是关键，防止被 style.css 里的旧动画覆盖 */
+                animation: no-shrink-shake 0.4s ease-in-out infinite, pulse-glow 1.5s ease-in-out infinite !important;
+
+                /* 确保边框高亮 */
+                border-color: var(--accent) !important;
+                z-index: 100;
+            }
+
+            /* 3. 说话时的气泡也不许乱跑 */
+            .seat.speaking .speech-bubble {
+                transform: translateX(-50%) translateY(-5px) scale(1) !important;
+                opacity: 1 !important;
+            }
+        }
+        /* 1. 公共基础样式 (两端通用：颜色、字体、边框) */
+                    .host-only-btn {
+                        position: absolute;
+                        z-index: 100;
+                        font-family: "Press Start 2P", monospace;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        
+                        /* 像素风配色 */
+                        background: #3d0808 !important;
+                        border: 2px solid #ff4444 !important; 
+                        color: #ffcccc !important; 
+                        
+                        /* 硬阴影 */
+                        box-shadow: 4px 4px 0px #1a0202; 
+                        cursor: pointer;
+                        
+                        /* 仅允许颜色过渡，禁止位置动画 */
+                        transition: background 0.1s, color 0.1s, border-color 0.1s;
+                    }
+
+                    /* 公共悬停/点击变色效果 */
+                    .host-only-btn:hover, 
+                    .host-only-btn:active {
+                        background: #660c0c; 
+                        border-color: #ff6666;
+                        color: #ffffff;
+                    }
+
+                    /* 2. 【核心隔离】电脑端专属逻辑 (屏幕宽度 > 768px) */
+                    /* 这段代码手机根本看不见，绝对不会瞬移！ */
+                    @media (min-width: 769px) {
+                        .host-only-btn {
+                            /* 电脑端定位：正中间 */
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            
+                            font-size: 10px;
+                            padding: 10px 14px;
+                        }
+
+                        /* 电脑端悬停位置锁死 */
+                        .host-only-btn:hover, 
+                        .host-only-btn:active {
+                            transform: translate(-50%, -50%) !important;
+                            top: 50% !important;
+                            left: 50% !important;
+                        }
+                    }
+
+                    /* 3. 【核心隔离】手机端专属逻辑 (屏幕宽度 <= 768px) */
+                    @media (max-width: 768px) {
+                        .host-only-btn {
+                            /* 手机端定位：右上角 */
+                            top: 6px;
+                            right: 6px;
+                            left: auto;   /* 覆盖 left */
+                            bottom: auto;
+                            transform: none; /* 覆盖 transform */
+                            
+                            font-size: 8px;
+                            padding: 4px 8px;
+                            border-width: 1px;
+                            box-shadow: 2px 2px 0px #1a0202; /* 阴影变薄 */
+                            z-index: 3000;
+                        }
+                        
+                        /* 手机端悬停/点击位置锁死 */
+                        /* 即使按下去，也强制钉在右上角 */
+                        .host-only-btn:hover, 
+                        .host-only-btn:active,
+                        .host-only-btn:focus {
+                            top: 6px !important;
+                            right: 6px !important;
+                            left: auto !important;
+                            transform: none !important;
+                        }
+                    }
+        
     </style>
 </head>
+
 <body>
     <div id="connection-status" class="connection-status connecting">🟡 Connecting...</div>
-    
+
     <div class="container">
         <div class="header">
             <div class="header-controls">
@@ -79,7 +390,7 @@
                 <span id="status-display">Status: Connecting...</span>
             </div>
         </div>
-        
+
         <div class="main-content">
             <div class="map-container" id="game-visual-container">
                 <div id="game-setup" class="game-setup" style="display: none;">
@@ -87,22 +398,130 @@
                     <div class="setup-form">
                         <div class="waiting-message">
                             <strong>Session Error.</strong><br><br>
-                            Missing Player ID. Please return to the <a href="/" style="color: #ffdd57;">Lobby</a> to join properly.
+                            Missing Player ID. Please return to the <a href="/" style="color: #ffdd57;">Lobby</a> to
+                            join properly.
                         </div>
-                        
+
                         <div style="opacity: 0.5; pointer-events: none;">
-                            <label>Player ID: <select id="user-agent-id"><option value="0">0</option></select></label>
+                            <label>Player ID: <select id="user-agent-id">
+                                    <option value="0">0</option>
+                                </select></label>
                             <button id="start-game-btn" class="start-button">Manual Force Start</button>
                         </div>
                     </div>
                 </div>
 
+                
                 <div class="table-scene">
-                    <div class="pixel-table"></div>
+                    <div class="pixel-table">
+                    </div>
+                    <button id="host-reset-btn" class="pixel-btn host-only-btn" style="display: none;">
+                        ⚠ TERMINATE GAME
+                    </button>
                     <div class="table-players" id="table-players"></div>
+
                 </div>
+
+                <div id="modal-overlay" class="modal-overlay" style="display: none;">
+                    <div id="host-confirm-modal" class="pixel-modal" style="display: none;">
+                        <h3>⚠ Terminate Game?</h3>
+                        <p>This will end the current session for ALL players.</p>
+                        <div class="modal-actions">
+                            <button id="confirm-reset-yes" class="pixel-btn danger">YES</button>
+                            <button id="confirm-reset-no" class="pixel-btn">NO</button>
+                        </div>
+                    </div>
+
+                    <div id="game-ended-modal" class="pixel-modal" style="display: none;">
+                        <h3 id="end-title">Game Ended</h3>
+                        <p id="end-reason">The game has finished.</p>
+                        <div class="modal-actions">
+                            <button id="global-return-lobby-btn" class="pixel-btn primary">
+                                🏠 Return to Lobby
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    /* 简单的模态框样式补充 */
+                    .modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        /* 1. 去掉黑色背景，改为透明 */
+                        background: transparent !important;
+                        background: rgba(0, 0, 0, 0.7);
+                        z-index: 9999;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        /* 2. 关键：允许鼠标穿透遮罩层，这样你就能滚动底下的聊天框了 */
+                        pointer-events: none !important;
+                    }
+
+                    .pixel-modal {
+                        background: #2c2c2c;
+                        border: 4px solid var(--accent);
+                        padding: 20px;
+                        text-align: center;
+                        color: white;
+                        image-rendering: pixelated;
+                        box-shadow: 0 10px 0 rgba(0, 0, 0, 0.5);
+                        /* 3. 关键：恢复弹窗本身的鼠标交互，否则按钮点不了 */
+                        pointer-events: auto !important;
+                    }
+
+                    .pixel-btn {
+                        background: #444;
+                        border: 2px solid white;
+                        color: white;
+                        padding: 10px 20px;
+                        cursor: pointer;
+                        font-family: inherit;
+                        margin: 5px;
+                    }
+
+                    .pixel-btn:hover {
+                        background: #666;
+                        transform: translateY(-2px);
+                    }
+
+                    .pixel-btn.danger {
+                        background: #aa2222;
+                        border-color: #ff5555;
+                    }
+
+                    .pixel-btn.primary {
+                        background: var(--accent);
+                        border-color: white;
+                        color: black;
+                    }
+
+                    /*.host-only-btn {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        z-index: 100;
+                        background: rgba(170, 34, 34, 0.9);
+                    }
+                    
+                    .host-only-btn:hover {
+                        transform: translate(-50%, -50%) !important;
+                        background: rgba(150, 30, 30, 1) !important;
+                    }*/
+                    /* ================= 房主终止按钮 (最终完美兼容版) ================= */
+                    
+                        /* --- 电脑端基础样式 --- */
+                        
+
+                </style>
+
             </div>
-            
+
             <div class="sidebar">
                 <div class="panel logs-panel">
                     <h3>Chat</h3>
@@ -111,7 +530,7 @@
                             Connecting to game server...
                         </div>
                     </div>
-                    
+
                     <div class="input-container">
                         <div id="user-input-request" style="display: none;">
                             <strong>Action Required:</strong> <span id="input-prompt">Please enter your move...</span>
@@ -129,4 +548,5 @@
     <script src="/static/avalon/js/websocket.js"></script>
     <script src="/static/avalon/js/participate.js"></script>
 </body>
+
 </html>

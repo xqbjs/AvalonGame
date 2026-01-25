@@ -24,9 +24,50 @@ from games.web.game_state_manager import GameStateManager
 from games.web.run_web_game import start_game_thread
 from games.utils import load_config
 
+import copy  # <--- 别忘了这个导入，否则会报 'copy' is not defined
+
+
+def sanitize_game_state(game_state: dict, viewer_id: int) -> dict:
+    """
+    根据观察者(viewer_id)的身份，过滤游戏状态(game_state)。
+    """
+    # 1. 深度拷贝，防止修改原始数据影响其他人
+    sanitized = copy.deepcopy(game_state)
+    
+    # 2. 如果状态里没有 roles 信息，直接返回
+    if "roles" not in sanitized or not sanitized["roles"]:
+        return sanitized
+        
+    roles = sanitized["roles"]
+    
+    # [FIX] 强制类型转换，防止 '0' != 0 的问题
+    try:
+        viewer_id_int = int(viewer_id)
+    except:
+        viewer_id_int = -999 # 转换失败，视为旁观者
+    
+    for idx, role_info in enumerate(roles):
+        # 如果是自己，可以看到自己的身份
+        if int(idx) == viewer_id_int:
+            continue 
+            
+        # --- 核心过滤逻辑 ---
+        # 除非你是上帝视角，否则你看别人只能看到 "Unknown"
+        # (进阶逻辑：梅林看坏人等逻辑可以由前端处理，或者这里写复杂判断，目前先做最严保护)
+        role_info["role_name"] = "Unknown"
+        role_info["is_good"] = None # 隐藏阵营
+        role_info["role_id"] = -1
+        
+    return sanitized
+
 # --- GLOBAL STATE & LOOP CAPTURE ---
 state_manager = GameStateManager()
 MAIN_LOOP = None # Will store the main asyncio loop
+
+# [NEW] 存储每个玩家当前未完成的输入请求 { player_id (int): message (dict) }
+PENDING_INPUT_REQUESTS = {}
+# [NEW] 存储本局游戏的所有聊天记录
+GAME_CHAT_HISTORY = []
 
 # [NEW] Global store for current game metadata (portraits, names)
 # Because WebSocket clients (guests) don't have this info in their sessionStorage
@@ -34,6 +75,9 @@ CURRENT_GAME_METADATA = {
     "num_players": 5,
     "players": [] 
 }
+# [NEW] 全局硬开关：默认是 False (没断电)
+# 这个开关独立于 state_manager，用于物理拦截消息
+IS_GAME_STOPPED = False
 
 app = FastAPI(title="Games Web Interface")
 
@@ -100,18 +144,107 @@ async def _safe_send_json(websocket: WebSocket, message: dict):
             await websocket.send_json(message)
     except Exception as e:
         print(f"Send Error: {e}")
+        
+########################################################
+# games/web/server.py
+
+# ... (Previous imports and monkey patches)
+
+# [新增] 全局清理辅助函数
+def _cleanup_server_globals():
+    """彻底清理 server.py 里的全局状态，防止下一局残留"""
+    global GAME_CHAT_HISTORY, PENDING_INPUT_REQUESTS, CURRENT_GAME_METADATA
+    
+    print("--- [Server] Cleaning up Global State ---")
+    GAME_CHAT_HISTORY.clear()
+    PENDING_INPUT_REQUESTS.clear()
+    
+    # 重置元数据，防止下一局显示上一局的头像
+    CURRENT_GAME_METADATA.clear()
+    CURRENT_GAME_METADATA.update({
+        "num_players": 5,
+        "players": []
+    })
+    # [新增] 清理大厅的 AI 缓存，防止返回大厅看到上一局的 AI
+    if lobby_manager:
+        lobby_manager.current_ai_ids = []
+
 
 async def send_personal_message(player_id: int, message: dict):
-    """Thread-safe personal message."""
+    """Thread-safe personal message with Request Persistence & Smart Privacy."""
+    # [新增] 检查电闸
+    if IS_GAME_STOPPED:
+        return
+    if state_manager.should_stop:
+        return
+    # 1. 拦截输入请求 (保持不变)
+    if message.get("type") == "user_input_request":
+        print(f"--- [Server] Recording Pending Request for Player {player_id}")
+        PENDING_INPUT_REQUESTS[player_id] = message
+        
+    # 2. [FIX] 智能存储逻辑
+    if message.get("type") == "message":
+        should_store = True
+        
+        # 检查是否是重复消息（广播检测）
+        if len(GAME_CHAT_HISTORY) > 0:
+            last_msg = GAME_CHAT_HISTORY[-1]
+            # 如果内容和发送者都一样，说明这是同一条消息发给了下一个人
+            if (last_msg.get("content") == message.get("content") and 
+                last_msg.get("sender") == message.get("sender")):
+                
+                # [核心修复] 既然发给了第二个人，说明它是公开消息！
+                # 撕掉上一条消息的“私有标签”，让所有人可见
+                if "_private_to" in last_msg:
+                    # print(f"--- [Server] Promoting message to PUBLIC: {message.get('content')[:10]}...")
+                    del last_msg["_private_to"]
+                
+                # 既然上一条已经变成公开的了，这一条就不用再存了
+                should_store = False
+        
+        if should_store:
+            # 默认先当成私有消息存起来，标记归属者
+            # 如果后面发现还有人收到这条消息，上面的逻辑会把它变成公开
+            msg_to_store = message.copy()
+            msg_to_store["_private_to"] = player_id 
+            GAME_CHAT_HISTORY.append(msg_to_store)
+
+    # 3. 发送消息 (保持不变)
     conn_id = state_manager.player_connections.get(player_id)
     if conn_id and conn_id in state_manager.websockets:
         ws = state_manager.websockets[conn_id]
         await _safe_send_json(ws, message)
 
+
 async def broadcast_message_safe(message: dict):
-    """Thread-safe broadcast (Monkey patch replacement)."""
-    for conn_id, ws in state_manager.websockets.items():
-        await _safe_send_json(ws, message)
+    """
+    Thread-safe broadcast with Privacy & History Recording.
+    """
+    # [新增] 如果电闸拉了 (True)，且不是强制结束信号，直接拦截！
+    if IS_GAME_STOPPED and message.get("type") != "GAME_FORCE_STOPPED":
+        print(f"🛑 [BLOCKED] Message blocked by Kill Switch: {message.get('type')}")
+        return
+    # [旧的检查保留]
+    if state_manager.should_stop and message.get("type") != "GAME_FORCE_STOPPED":
+        return
+    # [NEW] 1. 记录聊天历史
+    # 只记录类型为 "message" 的消息 (也就是聊天/系统日志)
+    if message.get("type") == "message":
+        GAME_CHAT_HISTORY.append(message)
+        print(f"✅ [DEBUG] Saved Chat. Total History: {len(GAME_CHAT_HISTORY)}")
+
+    # 2. 如果不是游戏状态包，直接群发
+    if message.get("type") != "game_state":
+        for conn_id, ws in state_manager.websockets.items():
+            await _safe_send_json(ws, message)
+        return
+
+    # 3. 如果是 game_state，执行视野过滤 (之前的逻辑)
+    for player_id, conn_id in state_manager.player_connections.items():
+        if conn_id in state_manager.websockets:
+            ws = state_manager.websockets[conn_id]
+            safe_message = sanitize_game_state(message, player_id)
+            await _safe_send_json(ws, safe_message)
 
 # Apply the Safe Methods
 state_manager.send_personal_message = send_personal_message
@@ -289,15 +422,17 @@ async def _handle_game_websocket(websocket: WebSocket, uid: Optional[int] = None
         state_manager.register_player_connection(uid, connection_id)
     
     try:
+        # 1. 发送基础游戏状态
         await _safe_send_json(websocket, state_manager.format_game_state())
         
-        # [NEW] Send Global Metadata (Names/Avatars) to Client
+        # 2. 发送元数据 (头像/名字)
         await _safe_send_json(websocket, {
             "type": "game_metadata",
             "metadata": CURRENT_GAME_METADATA,
             "my_id": uid
         })
         
+        # 3. 发送模式信息
         await _safe_send_json(websocket, {
             "type": "mode_info",
             "mode": state_manager.mode,
@@ -305,6 +440,44 @@ async def _handle_game_websocket(websocket: WebSocket, uid: Optional[int] = None
             "game": state_manager.game_state.get("game"),
         })
         
+        # [NEW] 核心修复：发送历史聊天记录
+        # [FIX] 发送历史记录 - 强制使用“逐条发送”模式
+        # 这种方式兼容性最好，前端不需要任何改动就能显示
+        if len(GAME_CHAT_HISTORY) > 0:
+            print(f"--- [Recover] Filtering & Sending history to Player {uid}")
+            
+            # 1. 筛选可见消息
+            target_uid_str = str(uid) if uid is not None else "-999"
+            
+            filtered_history = []
+            for msg in GAME_CHAT_HISTORY:
+                # 安全获取 _private_to，默认为空（即公开消息）
+                msg_owner = str(msg.get("_private_to", ""))
+                
+                # 如果是公开消息(空)，或者是发给我的私信，就放入发送列表
+                if not msg.get("_private_to") or msg_owner == target_uid_str:
+                    filtered_history.append(msg)
+
+            # 2. 逐条发送 (伪装成新消息)
+            for msg in filtered_history:
+                msg_to_send = msg.copy()
+                
+                # 确保类型是 "message"，这样前端的 onMessage('message') 就会处理它
+                msg_to_send["type"] = "message" 
+                
+                # 清理掉内部标记
+                if "_private_to" in msg_to_send:
+                    del msg_to_send["_private_to"]
+                
+                await _safe_send_json(websocket, msg_to_send)
+
+        # [NEW] 核心修复：检查是否有“未完成的输入请求”并重发
+        if uid is not None and uid in PENDING_INPUT_REQUESTS:
+            print(f"--- [Recover] Resending pending input request to Player {uid}")
+            pending_msg = PENDING_INPUT_REQUESTS[uid]
+            await _safe_send_json(websocket, pending_msg)
+        
+        # 4. 监听循环
         while True:
             try:
                 data = await websocket.receive_text()
@@ -312,24 +485,25 @@ async def _handle_game_websocket(websocket: WebSocket, uid: Optional[int] = None
                 
                 if message.get("type") == "user_input":
                     agent_id = message.get("agent_id")
+                    content = message.get("content", "")
                     
-                    # if uid is not None and int(agent_id) == int(uid):
-                    #     content = message.get("content", "")
-                    #     await state_manager.put_user_input(agent_id, content)
-                    # elif state_manager.mode == "participate" and str(agent_id) == str(state_manager.user_agent_id):
-                    #      content = message.get("content", "")
-                    #      await state_manager.put_user_input(agent_id, content)
-
+                    # [NEW] 核心修复：收到用户输入后，清除由于该请求产生的“欠账”
+                    # 只有当发送者是该用户时才清除
                     if uid is not None and int(agent_id) == int(uid):
-                        content = message.get("content", "")
+                        if uid in PENDING_INPUT_REQUESTS:
+                            print(f"--- [Server] Cleared Pending Request for Player {uid}")
+                            del PENDING_INPUT_REQUESTS[uid]
+                        
                         await state_manager.put_user_input(str(agent_id), content)
+                        
                     elif state_manager.mode == "participate" and str(agent_id) == str(state_manager.user_agent_id):
-                        content = message.get("content", "")
+                        # 兼容旧逻辑
                         await state_manager.put_user_input(str(agent_id), content)
      
             except WebSocketDisconnect:
                 break
             except Exception as e:
+                print(f"WS Loop Error: {e}")
                 break
                 
     except WebSocketDisconnect:
@@ -355,23 +529,6 @@ async def websocket_legacy(websocket: WebSocket):
     await _handle_game_websocket(websocket, None)
 
 
-# --- API MODELS & ENDPOINTS ---
-
-# class StartGameRequest(BaseModel):
-#     game: str = "avalon"
-#     mode: str = "observe"
-#     language: str = "en"
-#     agent_configs: Dict[int | str, Dict[str, str]] | None = None
-#     num_players: int = 5
-#     user_agent_id: int = 0
-#     preset_roles: list[dict] | None = None
-#     selected_portrait_ids: list[int] | None = None
-#     ai_ids: list[int] | None = None 
-#     human_power: Optional[str] = None
-#     max_phases: int = 20
-#     negotiation_rounds: int = 3
-#     power_names: list[str] | None = None
-#     power_models: Dict[str, str] | None = None
 class StartGameRequest(BaseModel):
     game: str = "avalon"
     mode: str = "observe"
@@ -391,144 +548,19 @@ class StartGameRequest(BaseModel):
     power_names: list[str] | None = None
     power_models: Dict[str, str] | None = None
 
-# async def start_game_implementation(request: StartGameRequest, lobby_players: List[Dict] = None):
-#     print(f"--- [Game Init] Starting Game Check ---")
-#     if state_manager.game_state.get("status") == "running":
-#         state_manager.stop_game()
-        
-#     state_manager.reset()
-#     state_manager.set_mode(request.mode, str(request.user_agent_id) if request.mode == "participate" else None, game=request.game)
-    
-
-    
-#     # ========================== [智能补位逻辑 START] ==========================
-#     # 1. 初始化 AI 列表
-#     if request.ai_ids is None:
-#         request.ai_ids = []
-    
-#     # 2. 找出所有坑位
-#     all_slots = list(range(request.num_players)) # [0, 1, 2, 3, 4]
-    
-#     # 3. 找出用户已明确指定的 AI (绝对不让活人坐)
-#     fixed_ai_set = set(request.ai_ids)
-    
-#     # 4. 找出理论上留给人类的坑位 (例如 [0, 1, 2, 4])
-#     available_human_slots = [i for i in all_slots if i not in fixed_ai_set]
-#     available_human_slots.sort()
-    
-#     # 5. 计算实际有多少个活人
-#     # 如果 lobby_players 为空 (API直接调用)，假设只有 1 个活人
-#     real_human_count = len(lobby_players) if lobby_players else 1
-#     print(f"--- [Game Init] Total Slots: {request.num_players}, Fixed AI: {fixed_ai_set}")
-#     print(f"--- [Game Init] Available Human Slots: {available_human_slots}")
-#     print(f"--- [Game Init] Real Humans Connected: {real_human_count}")
-
-#     # 6. 分配座位：
-#     # 真正的人类 ID = 预留坑位中的前 N 个 (N = 活人数)
-#     assigned_human_ids = available_human_slots[:real_human_count]
-    
-#     # 剩余没坐满的坑位 = 预留坑位中的后半部分 -> 必须转为 AI
-#     empty_slots_to_fill = available_human_slots[real_human_count:]
-    
-#     if empty_slots_to_fill:
-#         print(f"⚠️ [Auto-Fill] Not enough humans! Converting slots {empty_slots_to_fill} to AI.")
-#         request.ai_ids.extend(empty_slots_to_fill)
-#         # 重新排序并去重
-#         request.ai_ids = sorted(list(set(request.ai_ids)))
-#     else:
-#         print(f"--- [Game Init] Human slots match player count perfectly.")
-
-#     # ========================== [智能补位逻辑 END] ==========================
-
-#     # [CRITICAL] Populate Global Metadata
-#     # 注意：这里的 ai_ids_set 必须使用我们刚刚更新过的 request.ai_ids
-#     ai_ids_set = set(request.ai_ids)
-    
-#     players_meta = []
-#     selected_portrait_ids = request.selected_portrait_ids or list(range(1, request.num_players + 1))
-#     ai_portrait_idx = 0
-#     human_idx_counter = 0 # 用来遍历 lobby_players
-    
-#     for i in all_slots:
-#         is_human = (i not in ai_ids_set)
-#         p_data = {"id": i, "is_human": is_human}
-        
-#         if is_human:
-#             # Map to Lobby Player info
-#             # 只有当该 ID 确实被分配给人类时，才从 lobby_players 取名字
-#             if lobby_players and human_idx_counter < len(lobby_players):
-#                 lp = lobby_players[human_idx_counter]
-#                 p_data["name"] = lp["name"]
-#                 p_data["portrait_id"] = lp.get("avatar_id", "human")
-#                 human_idx_counter += 1
-#             else:
-#                 p_data["name"] = f"Player {i}"
-#                 p_data["portrait_id"] = "human"
-#         else:
-#             # AI Logic
-#             if ai_portrait_idx < len(selected_portrait_ids):
-#                 pid = selected_portrait_ids[ai_portrait_idx]
-#                 ai_portrait_idx += 1
-#             else:
-#                 pid = (i % 15) + 1
-#             p_data["portrait_id"] = pid
-            
-#             agent_name = f"Agent {i}"
-#             if request.agent_configs:
-#                 cfg = request.agent_configs.get(pid) or request.agent_configs.get(str(pid))
-#                 if cfg and cfg.get("base_model"):
-#                     agent_name = cfg.get("base_model")
-#             p_data["name"] = agent_name
-            
-#         players_meta.append(p_data)
-        
-#     CURRENT_GAME_METADATA["num_players"] = request.num_players
-#     CURRENT_GAME_METADATA["players"] = players_meta
-    
-#     start_game_thread(
-#         state_manager=state_manager,
-#         game=request.game,
-#         mode=request.mode,
-#         language=request.language,
-#         num_players=request.num_players,
-#         user_agent_id=request.user_agent_id,
-#         preset_roles=request.preset_roles,
-#         selected_portrait_ids=request.selected_portrait_ids,
-#         agent_configs=request.agent_configs or {},
-#         ai_ids=request.ai_ids, # 传入更新后的 AI 列表
-#         human_power=request.human_power,
-#         max_phases=request.max_phases,
-#         negotiation_rounds=request.negotiation_rounds,
-#         power_names=request.power_names,
-#         power_models=request.power_models or {},
-#     )
-
-#     # 重定向逻辑修正：准确告诉每个 WebSocket 它们是谁
-#     if lobby_players:
-#         # assigned_human_ids 是我们在上面计算出来的，例如 [0, 1]
-#         for idx, p in enumerate(lobby_players):
-#             if idx < len(assigned_human_ids):
-#                 # 这是一个参与游戏的玩家
-#                 assigned_id = assigned_human_ids[idx]
-#                 url = f"/avalon/participate?uid={assigned_id}"
-#                 await _safe_send_json(p['ws'], {
-#                     "type": "GAME_START",
-#                     "url": url,
-#                     "player_id": assigned_id
-#                 })
-#             else:
-#                 # 观众
-#                 await _safe_send_json(p['ws'], {
-#                     "type": "GAME_START",
-#                     "url": "/avalon/observe",
-#                     "player_id": -1
-#                 })
 async def start_game_implementation(request: StartGameRequest, lobby_players: List[Dict] = None):
+    global IS_GAME_STOPPED # <--- 引入全局变量
     print(f"--- [Game Init] Starting Game Check ---")
+    # [核心] 新游戏开始，恢复供电
+    IS_GAME_STOPPED = False
+    print("--- [Server] 🟢 GLOBAL KILL SWITCH DEACTIVATED (Ready for New Game) 🟢 ---")
+    
     if state_manager.game_state.get("status") == "running":
         state_manager.stop_game()
-        
-    state_manager.reset()
+    
+    _cleanup_server_globals() # <--- [NEW] 这里的 GAME_CHAT_HISTORY.clear() 已经被包含在里面了
+    state_manager.reset() # <--- 在这里重置是安全的
+    GAME_CHAT_HISTORY.clear()  # [NEW] 新游戏开始，清空聊天记录
     state_manager.set_mode(request.mode, str(request.user_agent_id) if request.mode == "participate" else None, game=request.game)
     
     # 1. 确定有多少个真人，多少个 AI
@@ -673,16 +705,25 @@ async def start_game_api(request: StartGameRequest):
 
 @app.post("/api/stop-game")
 async def stop_game():
-    if state_manager.game_state.get("status") != "running":
-        raise HTTPException(status_code=400, detail="No game is currently running")
-    
+    global IS_GAME_STOPPED # <--- 引入全局变量
+    print("--- [Server] Received Force Stop Request ---")
+    await state_manager.broadcast_message({
+        "type": "GAME_FORCE_STOPPED",
+        "content": "The Host has terminated the game."
+    })
+    # 2. [核心] 拉下电闸！从此以后 server 拒绝任何广播
+    IS_GAME_STOPPED = True
+    print("--- [Server] 🛑 GLOBAL KILL SWITCH ACTIVATED 🛑 ---")
+    # 3. 停止后端逻辑
     state_manager.stop_game()
-    if hasattr(state_manager, '_game_task') and state_manager._game_task:
-        try:
-            state_manager._game_task.cancel()
-        except Exception:
-            pass
-            
+    
+    # 4. 等待一小会儿确保线程收到 InterruptedError 并退出 (可选)
+    await asyncio.sleep(0.1)
+    if lobby_manager:
+        lobby_manager.active_players = []
+        lobby_manager.current_ai_ids = []
+        print("--- [Server] Lobby State Cleared ---")
+     
     return {"status": "ok", "message": "Game stopped"}
 
 

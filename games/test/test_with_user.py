@@ -77,6 +77,8 @@ async def main(
                 name=f"Player{i}",
                 sys_prompt="",  # System prompt will be set in game.py
                 model=model,
+                # [关键修改] 强制指定中文，这会触发我们在类里写的中文思考指令
+                language="zh",
                 formatter=DashScopeMultiAgentFormatter(),
                 memory=InMemoryMemory(),
                 toolkit=Toolkit(),
