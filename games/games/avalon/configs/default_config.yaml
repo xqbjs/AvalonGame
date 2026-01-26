@@ -7,8 +7,8 @@ default_role:
   trainable: false
   act_by_user: false
   model:
-    url: "YOUR_BASE_URL" 
-    api_key: "YOUR_API_KEY" 
+    url: "Your_API_Endpoint" 
+    api_key: "Your_Real_API_Key" 
     model_name: qwen-plus
     # model_name: qwen3-30b-a3b-instruct-2507
     temperature: 0.7

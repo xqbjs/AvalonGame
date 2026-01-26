@@ -423,7 +423,15 @@ async def _handle_game_websocket(websocket: WebSocket, uid: Optional[int] = None
     
     try:
         # 1. 发送基础游戏状态
-        await _safe_send_json(websocket, state_manager.format_game_state())
+        #await _safe_send_json(websocket, state_manager.format_game_state())
+        # 1. 发送基础游戏状态 [FIXED: 增加脱敏逻辑]
+        raw_state = state_manager.format_game_state()
+        # 如果 uid 是 None (观察者), 设为 -999 进行脱敏
+        viewer_id_safe = uid if uid is not None else -999
+        # 调用 sanitize_game_state 过滤掉别人的身份
+        sanitized_state = sanitize_game_state(raw_state, viewer_id_safe)
+        
+        await _safe_send_json(websocket, sanitized_state)
         
         # 2. 发送元数据 (头像/名字)
         await _safe_send_json(websocket, {
